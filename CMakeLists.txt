@@ -1,4 +1,6 @@
 project(moond)
 cmake_minimum_required(VERSION 3.31)
 add_library(moond-core STATIC src/core.c)
+set_property(TARGET moond-core PROPERTY C_STANDARD 23)
+set_property(TARGET moond-core PROPERTY C_STANDARD_REQUIRED ON)
 target_include_directories(moond-core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
