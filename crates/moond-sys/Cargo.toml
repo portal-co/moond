@@ -1,0 +1,12 @@
+[package]
+name = "moond-sys"
+version = "0.1.0"
+edition = "2024"
+description.workspace = true
+license-file.workspace = true
+
+[dependencies]
+
+[build-dependencies]
+bindgen.workspace = true
+cc.workspace = true

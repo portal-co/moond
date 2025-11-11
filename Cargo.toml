@@ -1,5 +1,5 @@
 [workspace]
-members=[]
+members=["crates/moond-sys"]
 resolver="3"
 
 [workspace.package]
@@ -7,3 +7,5 @@ description = "Moon landing emulator designed for the future"
 license-file = "COPYING.md"
 
 [workspace.dependencies]
+bindgen = "0.71.0"
+cc = "^1.0.83"
