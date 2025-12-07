@@ -1,22 +1,14 @@
-go — C-like pseudocode (template)
+GO — C-like pseudocode
 
-/* Auto-generated template (keep pending list entry until manual editing completes).
-   Source: ref/block1/instr/go.md
-   References: AGCIS Issue 2/3 and AEAProgrammingReference where applicable.
-*/
-
-Description:
-- High-level overview: (fill in)
-
-/* Pseudocode: replace placeholders and expand inline functions. */
-void go(/* operands */) {
-    // TODO: implement detailed C-like pseudocode for go
-    // 1) STMIC read/write as required
-    // 2) Load operands into A/B/LP as needed
-    // 3) Perform arithmetic/logic
-    // 4) Handle overflow/underflow and signal PINC/MINC if needed
-    // 5) Restore memory when applicable
-    // 6) Trigger STD2/next instruction sequencing
+/* Start computer by executing instruction at fixed start address (02030). */
+void GO(void) {
+    address_t start = START_ADDRESS; // 02030 (octal)
+    // Load start instruction into B and SQ just like TC but using start address
+    B = MEM.read(start);
+    SQ = ordercode_of(B);
+    test_parity(B);
+    // Set Z to start+1 per TC/GO semantics
+    Z = start + 1;
+    // Execute-first: SQG will now execute the order code in SQ
+    SQG.execute_STD2();
 }
-
-/* TODO:VERIFY: mark unresolved hardware/timing edge-cases here */

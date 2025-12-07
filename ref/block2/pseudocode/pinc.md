@@ -1,22 +1,12 @@
-pinc — C-like pseudocode (template)
+PINC — C-like pseudocode (increment overflow counter)
 
-/* Auto-generated template (keep pending list entry until manual editing completes).
-   Source: ref/block1/instr/pinc.md
-   References: AGCIS Issue 2/3 and AEAProgrammingReference where applicable.
-*/
-
-Description:
-- High-level overview: (fill in)
-
-/* Pseudocode: replace placeholders and expand inline functions. */
-void pinc(/* operands */) {
-    // TODO: implement detailed C-like pseudocode for pinc
-    // 1) STMIC read/write as required
-    // 2) Load operands into A/B/LP as needed
-    // 3) Perform arithmetic/logic
-    // 4) Handle overflow/underflow and signal PINC/MINC if needed
-    // 5) Restore memory when applicable
-    // 6) Trigger STD2/next instruction sequencing
+/* Increment content of addressed counter by one (used for OVCTR). */
+void PINC(address_t ctr_addr) {
+    word_t val = MEM.read(ctr_addr);
+    word_t inc = (val + 1) & WORD_MASK;
+    MEM.write(ctr_addr, inc);
+    if (inc == 0) {
+        // Overflow happened; send signal to Priority Control per AGCIS
+        signal_counter_overflow();
+    }
 }
-
-/* TODO:VERIFY: mark unresolved hardware/timing edge-cases here */

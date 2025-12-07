@@ -1,22 +1,16 @@
-rpt — C-like pseudocode (template)
+RPT — C-like pseudocode (Interrupt Program)
 
-/* Auto-generated template (keep pending list entry until manual editing completes).
-   Source: ref/block1/instr/rpt.md
-   References: AGCIS Issue 2/3 and AEAProgrammingReference where applicable.
-*/
-
-Description:
-- High-level overview: (fill in)
-
-/* Pseudocode: replace placeholders and expand inline functions. */
-void rpt(/* operands */) {
-    // TODO: implement detailed C-like pseudocode for rpt
-    // 1) STMIC read/write as required
-    // 2) Load operands into A/B/LP as needed
-    // 3) Perform arithmetic/logic
-    // 4) Handle overflow/underflow and signal PINC/MINC if needed
-    // 5) Restore memory when applicable
-    // 6) Trigger STD2/next instruction sequencing
+/* Transfer control to interrupting program and save context. */
+void RPT(void) {
+    // Save Z and B to ZRUPT and BRUPT
+    ZRUPT = Z;
+    BRUPT = B;
+    // Set Z to address provided by Interrupt Priority Control
+    Z = InterruptPriorityControl.get_interrupt_address();
+    // Inhibit further interrupts
+    inhibit_interrupts();
+    // Reset priority request
+    InterruptPriorityControl.reset_request();
+    // Execute STD2 to start interrupt handler
+    SQG.execute_STD2();
 }
-
-/* TODO:VERIFY: mark unresolved hardware/timing edge-cases here */

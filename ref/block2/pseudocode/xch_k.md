@@ -1,22 +1,13 @@
-xch_k — C-like pseudocode (template)
+XCH K — C-like pseudocode (flip-flop and memory variants)
 
-/* Auto-generated template (keep pending list entry until manual editing completes).
-   Source: ref/block1/instr/xch_k.md
-   References: AGCIS Issue 2/3 and AEAProgrammingReference where applicable.
-*/
-
-Description:
-- High-level overview: (fill in)
-
-/* Pseudocode: replace placeholders and expand inline functions. */
-void xch_k(/* operands */) {
-    // TODO: implement detailed C-like pseudocode for xch_k
-    // 1) STMIC read/write as required
-    // 2) Load operands into A/B/LP as needed
-    // 3) Perform arithmetic/logic
-    // 4) Handle overflow/underflow and signal PINC/MINC if needed
-    // 5) Restore memory when applicable
-    // 6) Trigger STD2/next instruction sequencing
+/* Exchange accumulator with location K. For flip-flop registers, semantics differ. */
+void XCH_K(address_t K) {
+    word_t a = A;
+    word_t k = MEM.read(K);
+    test_parity(k);
+    A = k;
+    // When K is a flip-flop register (<0020) a write semantics apply per AGCIS
+    MEM.write(K, a);
+    adjust_overflow_sign_bits_on_exchange(a, k);
+    SQG.execute_STD2();
 }
-
-/* TODO:VERIFY: mark unresolved hardware/timing edge-cases here */

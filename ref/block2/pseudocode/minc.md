@@ -1,7 +1,7 @@
-dv_k — C-like pseudocode (expanded)
+minc — C-like pseudocode (expanded)
 
-/* Expanded pseudocode for dv_k. Fill specifics per AGCIS. */
-void dv_k(/* operands */) {
+/* Expanded pseudocode for minc. Fill specifics per AGCIS. */
+void minc(/* operands */) {
     // 1) STMIC memory read if needed
     // 2) Load operands into A/B/LP
     // 3) Perform operation using helpers (add_with_flags, shift, etc.)

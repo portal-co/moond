@@ -1,22 +1,11 @@
-shanc — C-like pseudocode (template)
+SHANC — C-like pseudocode (Shift and Add One)
 
-/* Auto-generated template (keep pending list entry until manual editing completes).
-   Source: ref/block1/instr/shanc.md
-   References: AGCIS Issue 2/3 and AEAProgrammingReference where applicable.
-*/
-
-Description:
-- High-level overview: (fill in)
-
-/* Pseudocode: replace placeholders and expand inline functions. */
-void shanc(/* operands */) {
-    // TODO: implement detailed C-like pseudocode for shanc
-    // 1) STMIC read/write as required
-    // 2) Load operands into A/B/LP as needed
-    // 3) Perform arithmetic/logic
-    // 4) Handle overflow/underflow and signal PINC/MINC if needed
-    // 5) Restore memory when applicable
-    // 6) Trigger STD2/next instruction sequencing
+/* Shift left content of addressed counter and add one; used for serial-to-parallel conversion. */
+void SHANC(address_t ctr_addr) {
+    word_t e = MEM.read(ctr_addr);
+    test_parity(e);
+    word_t res = ((e << 1) + 1) & WORD_MASK;
+    MEM.write(ctr_addr, res);
+    if (test_bit(e,15)) signal_UPRUPT();
+    if (detect_overflow_shift(e, res)) { reverse_sign_bit(res); prevent_end_around_carry(); }
 }
-
-/* TODO:VERIFY: mark unresolved hardware/timing edge-cases here */
