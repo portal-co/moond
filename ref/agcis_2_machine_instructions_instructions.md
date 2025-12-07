@@ -1,11 +1,22 @@
 # AGCIS Issue 2 — Machine Instructions (instructions, modernized)
 
+See the canonical per-instruction index: `agcis_2_machine_instructions_index.md`.
+
+Per-instruction docs have been moved to `ref/instr/` (one file per instruction). Existing files include:
+
+- `ref/instr/ccs_k.md`  — CCS K
+- `ref/instr/su_k.md`   — SU K
+- `ref/instr/mp_k.md`   — MP K
+- `ref/instr/dv_k.md`   — DV K
+- `ref/instr/tc_k.md`   — TC K
+- `ref/instr/xch_k.md`  — XCH K
+- `ref/instr/csk_k.md`  — CSK K
+- `ref/instr/ts_k.md`   — TS / TSK / TSO
+- `ref/instr/msk_k.md`  — MSK K
+- `ref/instr/ad_k.md`   — AD K
+- `ref/instr/ndx_k.md`  — NDX K
+
 Source: `agcis_2_machine_instructions.pdf` (pages 16–40)
-
-This file transforms per-instruction descriptions from AGCIS Issue 2 into a modern micro-op / assembly-style reference. Each instruction is presented as a single micro-op sequence (no subinstructions). Original page citations are included.
-
-General conventions:
-- Octal numbers use `0o` prefix. (e.g., `0020` → `0o20`)
 - Micro-ops map to original control pulses and Actions (RZ, WS, WY, CI, RG, WB, WP, TP, GP, RU, WZ, etc.).
 - `STMIC` denotes the common memory-inquiry micro-op group (fetch/address staging/prepare next instruction) referenced in AGCIS.
 

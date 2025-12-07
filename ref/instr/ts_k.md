@@ -1,0 +1,44 @@
+# TS K / TSK / TSO — Transfer to memory / Skip on overflow (modernized)
+
+Source: `agcis_2_machine_instructions.pdf` — pages 24–28 (sections 2-25..2-28, figs. 2-6..2-7).
+
+Summary
+- Operation: Store `A` into memory at `K`. If `A` has overflow/underflow state, set `A` to a sentinel (+1 or -1 in AGC encoding) and skip the next instruction (advance `Z` by 2).
+- Modernization: Presented as a single routine that tests overflow state, writes when appropriate, and advances `Z` accordingly.
+
+Micro-op (C-like pseudocode)
+
+```c
+void TS_K(uint16_t K) {
+    uint16_t z = Z;
+
+    // STMIC: fetch staging word; we use S to reference K
+    S = z; Y = z; X = 0;
+    if (S >= 0o20) G = MEM[S];
+    B = G & 0x7FFF;
+
+    // Test overflow/underflow flags on A
+    if (!has_overflow(A) && !has_underflow(A)) {
+        // Normal write
+        MEM[S] = A;
+        Z = z + 1;
+    } else if (has_overflow(A)) {
+        // Overflow: set A to +1 sentinel and skip next
+        A = 0o1;
+        Z = z + 2;
+    } else {
+        // Underflow: set A to -1 sentinel (AGC encoding) and skip
+        A = 0o177776; // -1 in AGC representation for 16-bit
+        Z = z + 2;
+    }
+
+    P = parity(A);
+    SQ = extract_order_code(B);
+}
+```
+
+Citations
+- AGCIS Issue 2, pp.24–28, §§2-25–2-28 and figures referenced there.
+
+Notes
+- `TSK`/`TSO` variants represent control pulse differences; here we document the unified logical effect appropriate for emulation.
