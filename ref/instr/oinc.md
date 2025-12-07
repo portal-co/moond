@@ -1,0 +1,28 @@
+# OINC — Display (Zero Increment) (modernized)
+
+Source: `agcis_2_machine_instructions.pdf` — pp.100–101, fig. 2‑42.
+
+Summary
+- Operation: Read and display the content of the addressed location (used with the Computer Test Set). No increment occurs to the stored location; the name "zero increment" refers to the mode of the test set display.
+
+Micro-op (C-like pseudocode)
+
+```c
+void OINC(uint16_t K) {
+    // Fetch the addressed word for display
+    uint16_t word = MEM[K] & 0xFFFF;
+
+    // Send to test-set display interface
+    testset_display(word);
+
+    // STMIC-like staging for next instruction
+    Z = Z + 1; // normal next
+    SQ = extract_order_code(MEM[Z] & 0x7FFF);
+}
+```
+
+Notes
+- This instruction is intended for human/operator interaction and test equipment; it should not modify memory.
+
+Citations
+- AGCIS Issue 2, pp.100–101, fig. 2‑42.
