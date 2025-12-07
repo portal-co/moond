@@ -3,19 +3,25 @@
 Summary
 - Test register A; if zero, take next instruction from F (fixed); otherwise continue. Requires EXTEND to set EXT bit for extra addressing.
 
-Pseudocode
+Detailed pseudocode
 
 void BZF_F(uint16_t F) {
+    // Standard memory inquiry
     STMIC_stage();
 
-    // Branch when A == 0
+    // If A == 0 take next instruction from fixed F, otherwise continue
     if (A == 0) {
-        S = F; // take next instruction from F
+        // Branch taken: load fixed-field instruction from F on next fetch
+        S = F;
+        // NOTE: when EXT bit is required the EXTEND instruction must have been executed
+        // prior to this instruction to set SQ.EXT; derived order code is read by STD2 at time 12.
+        STD2_execute(); // finalize and call forward (covers write/restore timing)
     } else {
-        // Normal path: proceed to STD2
+        // No-branch path: keep normal sequencing and finalize
         STD2_execute();
     }
 }
 
 Notes
-- Block-2 behavior mirrors Block-1; the `EXTEND` step is modeled outside this function (caller should set SQ EXT bit when required)."
+- EXT handling: callers must execute EXTEND() when an Extra-Code/Fixed-F instruction requires SQ.EXT to be set before BZF_F.
+- This pseudocode models the observable behavior; STD2_execute() encapsulates the STD2 subinstruction timing and G/S/B/SQ load semantics."
