@@ -14,7 +14,7 @@ void DV_K(address_t K) {
 
     // Handle special cases (equal magnitudes, quotient overflow) per AGCIS DV rules
 
-    execute_STD2();
+    SQG.execute_STD2();
 }
 
 /* Notes/TODOs:

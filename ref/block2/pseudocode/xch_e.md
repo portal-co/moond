@@ -13,7 +13,7 @@ void XCH_K(address_t K) {
     // Handle overflow/sign movement: bit-15 lost, bit-16 moves to bit-15 of K, etc. (see AGCIS)
     handle_sign_overflow_on_exchange(a, e);
 
-    execute_STD2();
+    SQG.execute_STD2();
 }
 
 /* Notes/TODOs:
