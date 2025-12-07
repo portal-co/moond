@@ -90,5 +90,14 @@ If you want me to proceed now, reply with “Proceed” and I will begin reading
 
 These refinement requirements will be applied across the repo starting with the Block-2 files already created: updates will 1) add inline annotations to Block-2 inlines, 2) add cross-file links to the canonical registers/word-size doc, and 3) append edge-case notes where necessary. Each batch of refinements will be committed with messages starting with "[AI]" and an ISO timestamp.
 
+**Requirements documented (2025-12-07T08:07:05.122Z):**
+- Follow parity rules: Block-1 uses canonical helpers; Block-2 inlines small helpers with an "Inline notes" block and TODO:VERIFY markers for ambiguous behaviors.
+- Unify types: use canonical (u)int15_t typedefs and sign_extend15 helper from ref/cpu/registers.md.
+- Edge cases: mark unknown or uncertain behaviors with `TODO:VERIFY` and brief rationale; keep markers searchable.
+- Repo layout: Block-1 files under `ref/block1/instr` and Block-2 under `ref/block2/`; general definitions live under `ref/definitions`; per-block definitions can be under `ref/block1/definitions` and `ref/block2/definitions`.
+
+**Actions taken:**
+- Will move general definition docs (Instruction.md, STD2.md, EXTEND.md) to `ref/definitions/` and create `ref/block2/definitions/` for Block-2-specific defs.
+
 *File created: `ref/CONVERSATION_SUMMARY.md`*
 
