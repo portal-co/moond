@@ -25,12 +25,23 @@ void TC_K(uint16_t K) {
 Notes
 - `STD2_execute()` stands for the standard finalizing subinstruction that increments Z and prepares next fetch; this is inlined in the real AGC but represented here as a helper for clarity.
 
-Detailed behavior
-- Micro-ops: 1) STMIC_stage() to perform memory inquiry; 2) save return address Q = I + 1; 3) set S = K and load SQ from B; 4) STD2_execute() to finalize (increment Z, prepare next fetch).
-- Timing: TC K is a short sequence (TC0 + STD2) and should be modeled as atomic for documentation; real AGC implementation spans the STD2 subinstruction timing.
+Detailed pseudocode
 
-Subinstruction mapping
-- TC K corresponds to subinstruction TC0 followed by STD2 in the AGC subinstruction table; STD2 handles the final increment/transfer into Z and the call-forward.
+void TC_K(uint16_t K) {
+    // Standard memory inquiry (may fetch B/S/X/Y and G as needed)
+    STMIC_stage();
 
-Block-2 differences (placeholder)
-- Placeholder: record any Block-2 divergences here after targeted parsing of Block-2 PDF sections (avoid re-reading the whole PDF unless requested).
+    // Save return address (I+1) in Q
+    Q = I + 1;
+
+    // Set next instruction fetch to K and load order code from B into SQ
+    S = K;
+    SQ = extract_order_code(B); // handles EXT bit if present
+
+    // Finalize with STD2 (increments Z, prepares next fetch/call-forward)
+    STD2_execute();
+}
+
+Notes
+- Model TC_K as this atomic pseudocode for documentation and emulation; low-level timing (individual STD2 pulses) is preserved in the helper STD2_execute().
+- Block-2 differences (placeholder): record any divergences discovered while expanding other Block-2 files.
