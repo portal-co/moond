@@ -4,8 +4,8 @@ GO — C-like pseudocode (Start/Restart)
 
 /* Start computer by executing instruction at fixed start address (e.g., 0o2030 or 0o4000 depending on build); sets Z and schedules STD2. */
 void GO(void) {
-    // Fixed restart/start address
-    address_t start = START_ADDRESS; // e.g., 0o2030
+    // Fixed restart/start address per repo docs (AGC used 0o4000 as restart vector)
+    address_t start = 0o4000; // per ref/block2/go.md
 
     // Read instruction at start and prepare sequencing
     word_t w = MEM.read(start); test_parity(w);
