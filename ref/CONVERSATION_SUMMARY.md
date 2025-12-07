@@ -110,3 +110,16 @@ These refinement requirements will be applied across the repo starting with the 
 Audit
 - Scanned repository PDFs (ref/moon/AEAProgrammingReference.pdf, ref/moon/agcis_3_central_processor.pdf, ref/moon/agcis_2_machine_instructions.pdf) on 2025-12-07 for authoritative support; if evidence exists it is noted here. Initial audit: authoritative support not found in repo PDFs or ambiguous/OCR-unclear, so this file retains `TODO:VERIFY` and is provisionally marked as "inferred from training/model" when applicable.
 - Action: retain `TODO:VERIFY` marker and consult ref/TODO_AUDIT.md for central tracking. If additional AGC memos or hardware logs are available, add citations below or update this Audit block.
+
+=== Known references (fast lookup) ===
+- AGCIS Issue 2 (Machine Instructions) — ref/moon/agcis_2_machine_instructions.pdf; useful pages read for verification: 15–36 (TC/STD2/XCH/NDX/AD/SU), 46–60 (MP subinstructions), 61–80 (DV and related), 86–102 (misc: RPT, PINC/MINC, SHINC/SHANC, GO/TCSA/OINC/LINC).
+- AGCIS Issue 3 (Central Processor) — ref/moon/agcis_3_central_processor.pdf; useful pages read: 3–11 (register write/read behavior, bit 15/16 movement, parity block, adder end-around carry).
+- AEA Programming Reference — ref/moon/AEAProgrammingReference.pdf; useful pages read: 15–18 (PGNS scaler/register widths and downlink word formats).
+
+=== Priority list (current) ===
+1) Block-2 (top priority for parity/refinement)
+2) Block-2 base and supporting CPU/register behavior (AGCIS Issue 3 references)
+3) Block-1 (parity to Block-2 style and parity of pseudocode)
+4) AEA (low priority; collected at ref/aea/README.md)
+
+(Updated 2025-12-07T08:30:24.624Z)

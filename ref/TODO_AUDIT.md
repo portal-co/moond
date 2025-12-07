@@ -64,3 +64,7 @@ Notes and next steps
 - If desired, the next automated step is: for each `TODO` file, add an Audit entry inside the file pointing to this central summary and describing the local rationale; continue converting ambiguous inferences into `TODO:VERIFY (inferred from training/model)` where applicable.
 
 -- End of initial audit
+
+Audit progress (2025-12-07T08:30:24.624Z):
+- Resolved/Tentatively-resolved items have been annotated in individual files that reference AGCIS Issue 2/3 and AEA pages (see appended Audit resolution blocks).
+- Remaining TODO:VERIFY entries require external memos/hardware logs or deeper PDF page reads; they remain listed above for future action.
