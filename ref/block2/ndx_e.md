@@ -6,20 +6,29 @@ Summary
 Pseudocode
 
 void NDX_E(uint16_t E) {
+    // Standard memory inquiry for E
     STMIC_stage();
 
-    uint16_t idx = read_memory(E);
-    Instruction next = fetch_instruction(I + 1);
+    // Fetch indexing quantity (E) and the instruction at I+1
+    int16_t idx = sign_extend15(read_memory(E));
+    Instruction next_inst = fetch_instruction(I + 1); // returns (order_code, address, raw_word)
 
-    Instruction derived = derive_instruction(next, idx);
+    // Derive new instruction by adding idx to the word/address of next_inst
+    // derive_instruction implements AGC indexing rules: add low 10/12 bits to address portion,
+    // handle EXT bit/quarter codes, wrap/carry, and adjust order code if overflow into opcode bits
+    Instruction derived = derive_instruction(next_inst, idx);
 
-    // Place derived instruction into B/S/SQ as next to execute
+    // Place derived instruction as the next to execute (B/S/SQ loaded as in AGC)
     B = derived.raw_word;
     S = derived.address;
     SQ = derived.order_code;
 
+    // Finalize and call forward
     STD2_execute();
 }
 
+Helpers
+- derive_instruction(next_inst, idx): performs bitwise addition of idx to the instruction word/address per AGC rules, preserves EXT semantics, and returns normalized Basic Instruction (not an Extra-Code instruction unless valid).
+
 Notes
-- `derive_instruction` implements the addition rules described in AGCIS (including wrap/limits and EXT handling). Subinstructions NDXX0/NDXX1 are represented by the single `derive_instruction` step.
+- NDX E collapses NDXO/NDXI subinstructions into one logical operation for documentation; preserve precise bit/quarter-code arithmetic in derive_instruction for emulation fidelity.

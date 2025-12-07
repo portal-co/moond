@@ -6,28 +6,38 @@ Summary
 Pseudocode
 
 void DV_E(uint16_t E) {
+    // Prepare registers and memory access
     STMIC_stage();
 
-    int32_t dividend = ((int32_t)A << 15) | (int32_t)L; // sign/format per AGC conventions
-    int16_t divisor  = sign_extend15(read_memory(E));
+    // Compose signed 30-bit dividend from A (high) and L (low)
+    int32_t dividend = (sign_extend15(A) << 15) | (sign_extend15(L) & 0x7FFF);
 
+    // Read divisor from E (15-bit signed); read_memory handles E-edit/restore
+    int32_t divisor = sign_extend15(read_memory(E));
+
+    // Division-by-zero handling follows AGCIS (may invoke RUPT or defined state changes)
     if (divisor == 0) {
-        // Division-by-zero handling per AGCIS: set states, request RUPT or defined behavior
         handle_divide_by_zero();
         return;
     }
 
-    int32_t quotient  = dividend / divisor;
+    // Logical division using two's-complement arithmetic consistent with AGC method
+    // The AGC implements DV via an iterative subinstruction sequence (DVO..DV6);
+    // here we present the logical result while preserving signs and remainder semantics.
+    int32_t quotient = dividend / divisor;
     int32_t remainder = dividend % divisor;
 
+    // Store quotient (A) and remainder (L) as 15-bit quantities (helpers enforce AGC bit rules)
     A = (uint16_t)(quotient & 0x7FFF);
     L = (uint16_t)(remainder & 0x7FFF);
 
+    // Update sign/overflow indicators according to AGC rules
     set_div_sign_and_overflow(quotient, remainder);
 
+    // Bookkeeping and finalize
     B = I + 1;
     STD2_execute();
 }
 
 Notes
-- The multi-action DV0..DV7 sequence is represented by a single function for clarity; helpers encapsulate low-level bit- and timing-sensitive behaviors.
+- This routine represents the logical effect of the DV0..DV7/DV4 sequence; detailed per-action timing and specific bit-level end-around-carry behavior are encapsulated in helpers (set_div_sign_and_overflow, handle_divide_by_zero) for clarity.

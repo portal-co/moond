@@ -6,22 +6,28 @@ Summary
 Pseudocode
 
 void MP_K(uint16_t K) {
+    // Stage 0: standard memory inquiry for K
     STMIC_stage();
 
+    // Read multiplicand (K) and multiplier (A) as signed 15-bit values
     int32_t multiplicand = sign_extend15(read_memory(K));
     int32_t multiplier   = sign_extend15(A);
 
-    int32_t product = multiplicand * multiplier; // result fits in 30 bits
+    // Perform the multiplication (implemented by MP0/MP1/MP3 subinstruction sequence on AGC)
+    // Use full 30-bit two's-complement arithmetic to obtain exact product
+    int32_t full_product = multiplicand * multiplier; // fits in signed 30 bits
 
-    L = (uint16_t)(product & 0x7FFF);
-    A = (uint16_t)((product >> 15) & 0x7FFF);
+    // Store low and high 15-bit parts into L (low) and A (high) as AGC does
+    L = (uint16_t)(full_product & 0x7FFF);                     // low 15 bits
+    A = (uint16_t)((full_product >> 15) & 0x7FFF);             // high 15 bits
 
-    // Set sign/overflow indicators as specified
-    set_product_sign_and_overflow(product);
+    // Set sign/overflow indicators per AGC conventions (helper encapsulates bit rules)
+    set_product_sign_and_overflow(full_product);
 
+    // Bookkeeping and finalize
     B = I + 1;
     STD2_execute();
 }
 
 Notes
-- This routine collapses the MP0/MP1/MP3 subinstruction sequence into a single logical operation for documentation and emulation clarity.
+- This pseudocode represents the logical effect of the MP0/MP1/MP3 subinstruction sequence; helpers preserve AGC-specific overflow and sign-bit semantics.
