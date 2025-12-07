@@ -24,4 +24,11 @@ void BZF_F(uint16_t F) {
 
 Notes
 - EXT handling: callers must execute EXTEND() when an Extra-Code/Fixed-F instruction requires SQ.EXT to be set before BZF_F.
-- This pseudocode models the observable behavior; STD2_execute() encapsulates the STD2 subinstruction timing and G/S/B/SQ load semantics."
+- This pseudocode models the observable behavior; STD2_execute() encapsulates the STD2 subinstruction timing and G/S/B/SQ load semantics.
+
+Inline notes
+- BZF_F in Block-2 often relies on EXTEND being executed immediately prior; inlining STMIC makes the dependency clearer. See ref/definitions/EXTEND.md and ref/cpu/registers.md for canonical behavior.
+
+Edge cases / TODOs
+- Exact timing requirement for EXT bit relative to STD2: TODO:VERIFY.
+- Behavior if EXTEND is omitted but operand expects EXT semantics: TODO:VERIFY."

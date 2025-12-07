@@ -25,3 +25,10 @@ void XCH_E(uint16_t E) {
 Notes
 - Overflow semantics: when writing A into E the overflow bit may be lost for E/F memory depending on variant; helpers `read_memory`/`write_memory` preserve AGC-specific edit semantics.
 - XCH variants (LXCH, QXCH) follow the same pattern but target different registers.
+
+Inline notes
+- Block-2 style: STMIC stages are often inlined into XCH to reflect fused micro-op timing; reference canonical helpers in ref/definitions/Instruction.md and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- Exact overflow-bit propagation when exchanging with E-memory: TODO:VERIFY.
+- Whether write_memory preserves overflow bit for specific bank types: TODO:VERIFY.

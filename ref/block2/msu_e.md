@@ -25,3 +25,10 @@ void MSU_E(uint16_t E) {
 Notes
 - `twos_modular_subtract` performs cyclic subtraction with final sign correction as described in AGCIS (ensures result is expressed in ONE's complement convention used by AGC for angular values).
 - Use helpers to preserve exact bit and sign behaviors when converting between TWO's- and ONE's-complement representations.
+
+Inline notes
+- MSU_E is presented in Block-2 with inlined STMIC and memory access where timing matters; canonical helper functions live in ref/definitions/Instruction.md and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- Treatment of overflow-bit vs sign-bit for cyclic results: TODO:VERIFY.
+- Behavior when E points to special counter addresses: TODO:VERIFY.

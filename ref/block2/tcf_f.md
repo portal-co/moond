@@ -33,3 +33,10 @@ void TCF_F(uint16_t F) {
 Notes
 - TCF_F leaves C unchanged and uses the fixed-area address in F for the next fetch; model as atomic with STD2_execute() encapsulating final pulses.
 - Block-2 differences (placeholder): record any Block-2-specific bank/EXT semantics when discovered.
+
+Inline notes
+- In Block-2 TCF_F may require prior EXTEND to access extra-code variants; inline STMIC to show prefetch effects and reference ref/definitions/EXTEND.md.
+
+Edge cases / TODOs
+- Whether TCF_F must be preceded by EXTEND in all bank scenarios: TODO:VERIFY.
+- Interaction with C register bank boundaries when F addresses cross banks: TODO:VERIFY.

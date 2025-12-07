@@ -20,3 +20,10 @@ void CA_K(uint16_t K) {
 Notes
 - If K addresses E-memory the read/restore path obeys E-memory timing and editing rules; helper `read_memory` encapsulates those details.
 - CA_K is the basic load into A; CA A/CA L/CA Q and CA ZERO variants follow the same pattern but target different registers.
+
+Inline notes
+- This Block-2 doc references ref/cpu/registers.md for canonical types (uint15_t/int15_t) and ref/definitions/Instruction.md for the Instruction type. In Block-2, small STMIC stages are typically inlined when timing is significant.
+
+Edge cases / TODOs
+- Memory bank selection when K targets F/E areas: TODO:VERIFY (PDF ambiguous).
+- E-memory restore timing: TODO:VERIFY.

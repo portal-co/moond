@@ -20,3 +20,10 @@ void READ_H(uint16_t H) {
 Notes
 - read_channel(H) returns the channel content as a 15-bit/16-bit value; for display-only channels the helper should zero-extend or sign-extend as appropriate.
 - Use ref/STD2.md and ref/Instruction.md for helpers and type conventions.
+
+Inline notes
+- Channel I/O docs reference ref/cpu/write_amplifiers.md and ref/cpu/registers.md for canonical types and width handling; Block-2 docs inline small channel staging where timing matters.
+
+Edge cases / TODOs
+- Channel width normalization for 14-bit SCALER channels: TODO:VERIFY exact alignment.
+- Parity/formatting rules for certain legacy channels: TODO:VERIFY.
