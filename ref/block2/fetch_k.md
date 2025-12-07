@@ -17,3 +17,8 @@ void FETCH_K(uint16_t K_from_gse) {
 
 Notes
 - This instruction is driven by external GSE and does not advance program sequencing in the usual way; implementation should mimic the AGC test harness behavior.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

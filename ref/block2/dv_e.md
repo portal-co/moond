@@ -41,3 +41,8 @@ void DV_E(uint16_t E) {
 
 Notes
 - This routine represents the logical effect of the DV0..DV7/DV4 sequence; detailed per-action timing and specific bit-level end-around-carry behavior are encapsulated in helpers (set_div_sign_and_overflow, handle_divide_by_zero) for clarity.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

@@ -24,3 +24,8 @@ void INCR_E(uint16_t E) {
 
 Notes
 - If E corresponds to a counter address that requires Counter Priority handling, the implementation must notify the Counter Priority Control on overflow as described in AGCIS (e.g., addresses 0024..0027)."
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

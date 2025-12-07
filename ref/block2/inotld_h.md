@@ -12,3 +12,8 @@ void INOTLD_H(uint16_t H_from_gse) {
 
 Notes
 - Used for console testing; write_channel performs channel-format encoding.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

@@ -27,3 +27,8 @@ void ADS_E(uint16_t E) {
 
 Notes
 - encode_with_overflow(sum) returns the 15/16-bit representation put into A where positive/negative overflow are encoded as 000001 and 177776 respectively per AGC conventions.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

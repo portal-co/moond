@@ -35,3 +35,8 @@ void DAS_E(uint16_t E) {
 
 Notes
 - encode_double_add_overflow(sum) implements AGC's rule for placing overflow indicators into A when double-precision storage overflows occur; helpers must preserve AGC bit semantics and editing for E-memory writes.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

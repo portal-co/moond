@@ -17,3 +17,8 @@ void RAND_H(uint16_t H) {
 
 Notes
 - Channel reads use read_channel(H) which returns the appropriate bit-width; the AND is performed on the lower 15 bits with special handling for parity/overflow bits where applicable.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

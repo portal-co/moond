@@ -14,3 +14,8 @@ void TCSAJ_K(uint16_t K_from_gse) {
 
 Notes
 - For interactive GSE testing, FETCH/STORE interactions can be modeled by fetch_instruction_via_S and related helpers.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

@@ -18,3 +18,8 @@ void MINC_C(uint16_t C) {
 
 Notes
 - Implementation uses sign_extend15 to maintain consistent semantics for counters stored as complement numbers.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

@@ -18,3 +18,8 @@ void PCDU_C(uint16_t C) {
 
 Notes
 - cyclic_twos_increment handles the TWO's-complement specifics; see ref/block2/msu_e.md for TWO's-complement helpers.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

@@ -27,3 +27,8 @@ void RUPT(void) {
 Notes
 - interrupt_priority_control_get_routine_address() is an environment helper that responds to external interrupt logic; precise priority handling is outside this doc's scope.
 - RUPT is typically preceded by INHINT/RELINT state handling.
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.

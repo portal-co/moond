@@ -26,3 +26,8 @@ void AD_K(uint16_t K) {
 
 Notes
 - set_add_overflow_flags(sum) should implement AGC's overflow detection that sets sign/overflow flip-flops and encodes +1/-1 into A where AGC specifies (see ADS/DAS for related behavior)."
+Inline notes
+- Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
+
+Edge cases / TODOs
+- TODO:VERIFY ambiguous behaviors (overflow bits, EXT timing, E-memory restore timing). See ref/CONVERSATION_SUMMARY.md for tracking.
