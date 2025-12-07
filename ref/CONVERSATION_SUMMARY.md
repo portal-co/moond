@@ -76,5 +76,19 @@ If you want me to proceed now, reply with “Proceed” and I will begin reading
 - Commit messages for AI-generated edits must start with "[AI]" and include an ISO timestamp; do NOT modify the repo git user config.
 - Avoid re-reading the entire Block-2 PDF; process in targeted page-chunks and prefer reading recent commit messages for agentic context.
 
+**Block-2 completion (2025-12-07T08:00:11.937Z):**
+- Block-2 documentation pass completed: per-instruction C-like pseudocode files created under `ref/block2/`, STD2/EXTEND/Instruction helpers documented, and peripheral/counter/interrupt instructions included.
+
+**Refinement requirements (priority):**
+1. Parity between Block-1 and Block-2 pseudocode styles:
+   - Block-1: use concise reusable helper functions (e.g., fetch_instruction, read_memory) and keep pseudocode routines short and canonical.
+   - Block-2: inline small helpers where helpful and annotate the inlinee with comments and an "Inline notes" block describing why it was inlined (timing, subinstruction fusion). Mark the inlinee with a comment header linking to the canonical helper in ref/Instruction.md or ref/STD2.md.
+2. Unify registers and word-size documentation:
+   - Create a single canonical register & word-size doc (ref/cpu/registers.md currently exists; update it to authoritative status and add explicit (u)int15_t typedefs and octal bit maps). All instruction docs must reference it for types and conventions.
+3. Edge-case documentation and explicit unknowns:
+   - For divide-by-zero, bank-overflows, ambiguous EXT behaviors, and any case where the PDF or memos do not provide clear outcome, document the behavior and mark the result as "UNKNOWN" or "TODO: VERIFY" with a short rationale. Keep these markers searchable (e.g., use `TODO:VERIFY` tag).
+
+These refinement requirements will be applied across the repo starting with the Block-2 files already created: updates will 1) add inline annotations to Block-2 inlines, 2) add cross-file links to the canonical registers/word-size doc, and 3) append edge-case notes where necessary. Each batch of refinements will be committed with messages starting with "[AI]" and an ISO timestamp.
+
 *File created: `ref/CONVERSATION_SUMMARY.md`*
 
