@@ -73,3 +73,9 @@ Notes / Rationale
 - The original AGC uses subinstructions CCS0 and CCSl; here we inline the standard memory-inquiry (STMIC) and the select/branch logic so the instruction appears as a single micro-op routine.
 - We preserve exact branch distances (z + 1..z + 4) and the rule that A receives either `c(K) - 1` or `0` depending on the case (per AGCIS table 2-3).
 - Octal constants are shown with `0o` and types use `(u)int15_t` for value-bit semantics (as requested). Parity handling is left as a separate micro-op (`parity(G)`) to mirror the hardware parity pyramid.
+
+Inline notes
+- Block-1 uses canonical helper references in ref/definitions and ref/cpu/registers.md; where SCALER or other substantial refs are used, provide citations or mark TODO:VERIFY if uncertain.
+
+Edge cases / TODOs
+- TODO:VERIFY uncertain external references (SCALER etc.) — provide citation backup or mark as training-derived.

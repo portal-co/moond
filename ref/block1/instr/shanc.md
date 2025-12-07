@@ -35,3 +35,8 @@ void SHANC(void) {
 
 Citations
 - AGCIS Issue 2, pp.96–99, fig. 2‑41.
+Inline notes
+- Block-1 uses canonical helper references in ref/definitions and ref/cpu/registers.md; where SCALER or other substantial refs are used, provide citations or mark TODO:VERIFY if uncertain.
+
+Edge cases / TODOs
+- TODO:VERIFY uncertain external references (SCALER etc.) — provide citation backup or mark as training-derived.

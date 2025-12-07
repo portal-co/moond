@@ -34,3 +34,9 @@ Citations
 
 Notes
 - `schedule_PINC()` / `schedule_MINC()` are documented elsewhere (these emulate increment/decrement of the overflow-counter chain as in AGC hardware).
+
+Inline notes
+- Block-1 uses canonical helper references in ref/definitions and ref/cpu/registers.md; where SCALER or other substantial refs are used, provide citations or mark TODO:VERIFY if uncertain.
+
+Edge cases / TODOs
+- TODO:VERIFY uncertain external references (SCALER etc.) — provide citation backup or mark as training-derived.

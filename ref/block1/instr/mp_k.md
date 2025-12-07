@@ -35,3 +35,8 @@ Notes
 
 Citations
 - AGCIS Issue 2, pp.46–60 (figs. 2-17..2-25; table 2-4).
+Inline notes
+- Block-1 uses canonical helper references in ref/definitions and ref/cpu/registers.md; where SCALER or other substantial refs are used, provide citations or mark TODO:VERIFY if uncertain.
+
+Edge cases / TODOs
+- TODO:VERIFY uncertain external references (SCALER etc.) — provide citation backup or mark as training-derived.
