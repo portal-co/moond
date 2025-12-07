@@ -1,0 +1,40 @@
+AD K — C-like pseudocode
+
+Description:
+Add data from memory location K to accumulator A; on overflow/underflow increment/decrement overflow counter (OVCTR) via PINC/MINC. Restore K when required and proceed to next instruction. Behavior supported by AGCIS Issue 2 (FR-2-102A) and AGCIS Issue 3 (FR-2-103A).
+
+/* C-like pseudocode for AD K (order code 6) */
+void AD_K(address_t K) {
+    // Standard memory-inquiry cycle (STMIC)
+    word_t a = A;                // accumulator current (c(A))
+    word_t k = MEM.read(K);      // c(K) read (b(K))
+
+    // Perform addition; sum may set overflow/underflow flags
+    sum_t result = add_with_flags(a, k); // returns {value, overflow, underflow}
+
+    // Store result into A (c(A) = b(A) + c(K))
+    A = result.value;
+
+    // If overflow/underflow, schedule OVCTR update via PINC/MINC
+    if (result.overflow) {
+        // request increment of overflow counter (counter priority control will run PINC)
+        signal_OVCTR_increment(); // triggers PINC per AGC sequence
+    } else if (result.underflow) {
+        signal_OVCTR_decrement(); // triggers MINC per AGC sequence
+    }
+
+    // Restore addressed memory K when required (if 0024 <= S..K <= 1777 restore c(K)=b(K))
+    if (K_in_restorable_range(K)) {
+        MEM.write(K, k); // restore original b(K) if memory edit semantics require
+    }
+
+    // Advance program counter (STD2 will be executed by SQG to increment Z)
+    SQG.execute_STD2();
+}
+
+/* Helper semantics (notes):
+ - add_with_flags performs two's complement addition on 16-bit words and sets overflow/underflow depending on sign-bit rules described in AGCIS.
+ - signal_OVCTR_increment/decrement map to the hardware Counter Priority Control which causes execution of PINC/MINC after a short delay — see AGCIS Issue 2.
+ - K_in_restorable_range implements the condition in AGCIS: if addressed location in F or E memory with addresses >= 0024, restore; if K refers to flip-flop registers (<0020), different semantics apply.
+ - This pseudocode is intentionally high-level; inline small functions may be expanded in Block-2 files per parity rules.
+*/

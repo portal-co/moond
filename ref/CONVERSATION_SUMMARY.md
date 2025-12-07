@@ -131,3 +131,16 @@ Audit resolution (2025-12-07T08:34:19.588Z):
 Resolution (2025-12-07T08:37:28.578Z):
 - Supported behaviors referenced in this file have been corroborated by targeted readings of AGCIS Issue 2 (ref/moon/agcis_2_machine_instructions.pdf; pages ~15–36, 46–60, 61–80, 86–102), AGCIS Issue 3 (ref/moon/agcis_3_central_processor.pdf; pages 3–11), and AEAProgrammingReference.pdf (ref/moon/AEAProgrammingReference.pdf; pp.15–18) where applicable.
 - Status: instruction semantics and register-transfer behaviors supported by these sources are considered resolved here; hardware timing/edge-case details remain TODO:VERIFY and are tracked centrally in ref/TODO_AUDIT.md for later authoritative sourcing.
+
+Summary update (2025-12-07T08:42:31.181Z):
+- Remaining TODO:VERIFY files (counted earlier): 64. These are mostly Block-2 and Block-1 instruction files; many now contain appended Resolution/Audit blocks citing AGCIS Issue 2/3 and AEA pages, but keep TODO:VERIFY for hardware/timing edge cases.
+- Recent actions: appended Audit-resolution notes across Block-2 and Block-1 files and created low-priority AEA notes at ref/aea/README.md.
+- Next work: continue parity focusing on producing consistent C-like pseudocode for Block-2 instructions (inline small functions in Block-2 with comments and annotations on the inlinee), unify register/word-size documentation, and document edge cases (mark unknown results explicitly).
+
+Priority list reminder:
+1) Block-2 (top priority)
+2) Block-2 base / CPU/register behaviors (AGCIS Issue 3 references)
+3) Block-1 (parity and pseudocode style)
+4) AEA (low priority; ref/aea/README.md)
+
+Note: current session timestamp: 2025-12-07T08:42:31.181Z
