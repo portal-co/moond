@@ -1,0 +1,10 @@
+MINC — C-like pseudocode (decrement addressed counter)
+
+void MINC(address_t ctr_addr) {
+    word_t e = MEM.read(ctr_addr);
+    word_t dec = (e + 0xFFFF) & WORD_MASK; // subtract 1 with wrap
+    MEM.write(ctr_addr, dec);
+
+    // If underflow, signal Counter Priority Control per AGCIS
+    if (dec == MAX_WORD) signal_counter_underflow();
+}

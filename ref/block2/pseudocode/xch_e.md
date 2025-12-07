@@ -1,0 +1,14 @@
+XCH K — C-like pseudocode (exchange A with memory K)
+
+void XCH_K(address_t K) {
+    word_t a = A;
+    word_t e = MEM.read(K);
+    // If K is in E memory, exchange semantics: read e into A, write a back to K (or restore semantics per AGCIS)
+    A = e;
+    MEM.write(K, a);
+
+    // Handle overflow/sign movement: bit-15 lost, bit-16 moves to bit-15 of K, etc. (see AGCIS)
+    handle_sign_overflow_on_exchange(a, e);
+
+    execute_STD2();
+}
