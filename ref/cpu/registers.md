@@ -15,20 +15,33 @@ Register semantics
 - `S`: staging register for memory address during STMIC cycles.
 - `SQ`: 4-bit order-code register (feeds Sequence Generator). Holds the current order code to execute.
 
-Pseudocode access helpers
+Pseudocode access helpers and canonical types
 
 ```c
-// Read / write helpers — atomic for documentation purposes
-uint16_t read_register(const char *rname);
-void write_register(const char *rname, uint16_t value);
+// Canonical 15-bit types used in these docs
+typedef int16_t  int15_t;   // signed 15-bit value (stored in 16-bit container)
+typedef uint16_t uint15_t;  // unsigned 15-bit value (low 15 bits used)
 
-// Example: fetch next-order code from B
-uint8_t extract_order_code(uint16_t B_word) {
-    return (uint8_t)((B_word >> 11) & 0xF); // top 4 bits as example mapping
+// Read / write helpers — atomic for documentation purposes
+uint15_t read_register(const char *rname);
+void write_register(const char *rname, uint15_t value);
+
+// Helper: sign-extend a 15-bit AGC word into a 32-bit signed value
+static inline int32_t sign_extend15(uint15_t v) {
+    // AGC uses 15-bit magnitude with sign in bit 15; this helper normalizes to int32
+    if (v & 0x4000) { // sign bit set (assuming bit 14 is sign in 0-based indexing)
+        return (int32_t)(v | 0xFFFF8000); // extend negative
+    }
+    return (int32_t)(v & 0x7FFF);
+}
+
+// Example: fetch order code from B (canonical helper used across docs)
+static inline uint8_t extract_order_code(uint15_t B_word) {
+    return (uint8_t)((B_word >> 11) & 0xF); // top 4 bits as example mapping; see ref/Instruction.md
 }
 
 // Example: set the program counter
-void set_PC(uint16_t addr) {
+static inline void set_PC(uint15_t addr) {
     write_register("Z", addr);
 }
 ```

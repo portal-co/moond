@@ -69,3 +69,11 @@ Helpers
 
 Block-2 differences (placeholder)
 - Keep this as a placeholder for any Block-2-specific branch rules discovered later.
+
+Inline notes
+- CCS_E in Block-2 is inlined to show CCS0/STD2 fusion: the STMIC, read, branch-flag setting, and Z increment are presented as a single atomic sequence to mirror the PDF's subinstruction grouping.
+- Reference canonical helper: ref/Instruction.md::fetch_instruction_via_S and ref/STD2.md for STD2 semantics.
+
+Edge cases / TODOs
+- Sign encoding details (plus-zero vs minus-zero) are complex in AGC; where ambiguous, entries are marked with `TODO:VERIFY` for later validation against memos or hardware tests.
+- Behavior for E-memory editing during CCS (restore/write-back) is marked `TODO:VERIFY` where the PDF's OCR is unclear.

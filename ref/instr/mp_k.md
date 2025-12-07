@@ -8,26 +8,24 @@ Summary
 Micro-op (C-like pseudocode)
 
 ```c
-// Multiply: A:Q <- A * c(K) (A high, Q low) using shift-and-add
+// Canonicalized MP_K: present logical effect; small helpers used for I/O and sign handling
 void MP_K(uint16_t K) {
-    uint16_t z = Z;
-    S = z; Y = z; X = 0;
-    if (S >= 0o20) G = MEM[S];
-    uint16_t operand = G & 0x7FFF; // 15-bit magnitude
+    // Standard memory inquiry and operand fetch
+    STMIC_stage();
 
-    // Use signed 16-bit values for A and operand
-    int16_t a = (int16_t)A;
-    int16_t m = (int16_t)operand;
+    int32_t multiplicand = sign_extend15(read_memory(K));
+    int32_t multiplier   = sign_extend15(A);
 
-    int32_t product = (int32_t)a * (int32_t)m; // 32-bit result
+    int32_t full_product = multiplicand * multiplier; // logical 30-bit product
 
-    // Place high 16 bits into A, low 16 bits into Q
-    A = (uint16_t)((product >> 16) & 0xFFFF);
-    Q = (uint16_t)(product & 0xFFFF);
+    // Store into A (high) and L/Q (low) using canonical 15-bit fields
+    L = (uint16_t)(full_product & 0x7FFF);
+    A = (uint16_t)((full_product >> 15) & 0x7FFF);
 
-    // PC advance
-    Z = z + 1;
-    SQ = extract_order_code(G & 0x7FFF);
+    set_product_sign_and_overflow(full_product); // TODO:VERIFY exact overflow bit rules
+
+    B = I + 1;
+    STD2_execute();
 }
 ```
 

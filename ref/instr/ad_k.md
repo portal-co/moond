@@ -9,23 +9,23 @@ Summary
 Micro-op (C-like pseudocode)
 
 ```c
+// Canonicalized AD_K using helpers from ref/cpu/registers.md and ref/Instruction.md
 void AD_K(uint16_t K) {
-    uint16_t z = Z;
+    // Standard memory inquiry and operand read
+    STMIC_stage();
 
-    // STMIC
-    S = z; Y = z; X = 0;
-    if (S >= 0o20) G = MEM[S];
+    int32_t a = sign_extend15(A);
+    int32_t k = sign_extend15(read_memory(K));
 
-    int32_t sum = (int32_t)(int16_t)A + (int32_t)(int16_t)(G & 0xFFFF);
-    A = (int16_t)(sum & 0xFFFF);
+    int32_t sum = a + k;
 
-    if (sum > 0x7FFF) schedule_PINC();
-    else if (sum < -0x8000) schedule_MINC();
+    // Store result (low 15 bits) and set overflow indicators via helper
+    A = (uint16_t)(sum & 0x7FFF);
+    set_add_overflow_flags(sum); // sets PINC/MINC as required (TODO:VERIFY exact bit mapping)
 
-    P = parity(A);
-    B = G & 0x7FFF;
-    SQ = extract_order_code(B);
-    Z = z + 1;
+    // Bookkeeping and finalize
+    B = I + 1;
+    STD2_execute();
 }
 ```
 

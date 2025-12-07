@@ -8,32 +8,21 @@ Summary
 Micro-op (C-like pseudocode)
 
 ```c
+// Canonicalized SU_K using helpers
 void SU_K(uint16_t K) {
-    uint16_t z = Z;
-    S = z; Y = z; X = 0;
-    if (S >= 0o20) G = MEM[S];
-    B = G & 0x7FFF;
-    P = parity(G);
+    STMIC_stage();
 
-    // Read the operand signed
-    int16_t m = (int16_t)G;
-    int32_t result = (int32_t)A - (int32_t)m; // compute with extra width
+    int32_t a = sign_extend15(A);
+    int32_t k = sign_extend15(read_memory(K));
 
-    // Update A with low 16 bits (two's complement semantics)
-    A = (int16_t)(result & 0xFFFF);
+    int32_t result = a - k;
 
-    // Determine if increment/decrement of program counter carry is needed
-    if (result > 0x7FFF) {
-        // Overflow positive -> perform PINC (increment P register chain)
-        schedule_PINC();
-    } else if (result < -0x8000) {
-        // Underflow -> perform MINC
-        schedule_MINC();
-    }
+    // Store and set overflow helpers
+    A = (uint16_t)(result & 0x7FFF);
+    set_sub_overflow_flags(result); // TODO:VERIFY exact PINC/MINC mapping
 
-    // Advance to next instruction
-    Z = z + 1;
-    SQ = extract_order_code(B);
+    B = I + 1;
+    STD2_execute();
 }
 ```
 

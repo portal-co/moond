@@ -22,26 +22,28 @@ void TC_K(uint16_t K) {
     STD2_execute();
 }
 
-Notes
-- `STD2_execute()` stands for the standard finalizing subinstruction that increments Z and prepares next fetch; this is inlined in the real AGC but represented here as a helper for clarity.
-
-Detailed pseudocode
+// Inline notes: TC_K in Block-2 inlines the minimal STMIC behavior to preserve call-forward timing.
+// Inlinee reference: ref/STD2.md (STD2_execute) and ref/Instruction.md (Instruction typedef)
 
 void TC_K(uint16_t K) {
-    // Standard memory inquiry (may fetch B/S/X/Y and G as needed)
-    STMIC_stage();
+    // Inline STMIC: stage and prepare fetch
+    S = Z; Y = Z; X = 0; // staging micro-ops
+    if (S >= 0o20) {
+        // inline memory read (handles CP/E/F distinctions)
+        uint16_t tmp = read_memory(S);
+    }
 
-    // Save return address (I+1) in Q
+    // Save return address and set target
     Q = I + 1;
-
-    // Set next instruction fetch to K and load order code from B into SQ
     S = K;
-    SQ = extract_order_code(B); // handles EXT bit if present
+    SQ = extract_order_code(B); // EXT handling: TODO:VERIFY when EXT bit must be set
 
-    // Finalize with STD2 (increments Z, prepares next fetch/call-forward)
+    // Finalize with STD2
     STD2_execute();
 }
 
-Notes
-- Model TC_K as this atomic pseudocode for documentation and emulation; low-level timing (individual STD2 pulses) is preserved in the helper STD2_execute().
-- Block-2 differences (placeholder): record any divergences discovered while expanding other Block-2 files.
+Inline notes
+- TC_K in Block-2 presents the STMIC stages inline to show precise micro-op grouping; callers should reference ref/STD2.md for the finalization semantics.
+
+Edge cases
+- EXT bit handling for TC_K: TODO:VERIFY exact timing when EXT must be set (PDF ambiguous).
