@@ -23,7 +23,7 @@ void XCH_K(address_t K) {
     adjust_overflow_sign_bits_on_exchange(a, k); // helper encapsulates AGCIS bit-movement rules
 
     // Finalize sequence
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Notes/TODOs:

@@ -17,5 +17,5 @@ void RPT(void) {
     InterruptPriorityControl.reset_request();
 
     // Execute next instruction at interrupt handler
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }

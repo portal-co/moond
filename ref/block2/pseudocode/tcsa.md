@@ -13,5 +13,5 @@ void TCSA(address_t SA) {
     Z = SA + 1;
 
     // Transfer control to the fetched order code
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }

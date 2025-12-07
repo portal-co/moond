@@ -23,7 +23,7 @@ void TC_K(address_t K) {
     SQ = opcode_of(f);
 
     // STD2-like sequencing performed by SQG
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Notes/TODOs:

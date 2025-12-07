@@ -13,7 +13,7 @@ void MSU_E(address_t E) {
     A = result;
 
     // Finalize
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Notes/TODOs:

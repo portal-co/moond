@@ -21,7 +21,7 @@ void DV_K(address_t K) {
     }
 
     // Finalize instruction sequencing
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Notes/TODOs:

@@ -16,5 +16,5 @@ void GO(void) {
     Z = start + 1;
 
     // Execute-first: schedule STD2 to begin execution at SQ
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }

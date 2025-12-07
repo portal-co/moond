@@ -18,7 +18,7 @@ void NDX_E(address_t E) {
     SQ = derived.order_code;
 
     // Finalize sequencing via SQG
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Notes:

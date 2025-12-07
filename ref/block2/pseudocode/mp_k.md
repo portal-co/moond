@@ -17,7 +17,7 @@ void MP_K(address_t K) {
     LP = extract_low(p);
 
     // MP subinstruction sequencing (MP0..MP3) handled by SQG in hardware; schedule STD2 if required
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Notes/TODOs:

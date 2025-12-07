@@ -32,7 +32,7 @@ void AD_K(address_t K) {
     }
 
     // Advance program counter (STD2 will be executed by SQG to increment Z)
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Helper semantics (notes):

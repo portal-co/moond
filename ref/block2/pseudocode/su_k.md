@@ -16,7 +16,7 @@ void SU_K(address_t K) {
     if (result.overflow) signal_OVCTR_increment();
     else if (result.underflow) signal_OVCTR_decrement();
 
-    SQG.execute_STD2();
+    SQG.SQG.execute_STD2();
 }
 
 /* Notes/TODOs:
