@@ -68,3 +68,7 @@ Notes and next steps
 Audit progress (2025-12-07T08:30:24.624Z):
 - Resolved/Tentatively-resolved items have been annotated in individual files that reference AGCIS Issue 2/3 and AEA pages (see appended Audit resolution blocks).
 - Remaining TODO:VERIFY entries require external memos/hardware logs or deeper PDF page reads; they remain listed above for future action.
+
+Audit resolution (2025-12-07T08:34:19.588Z):
+- Targeted sources reviewed: AGCIS Issue 2 (ref/moon/agcis_2_machine_instructions.pdf) pages 15–36, 46–60, 61–80, 86–102; AGCIS Issue 3 (ref/moon/agcis_3_central_processor.pdf) pages 3–11; AEAProgrammingReference.pdf pages 15–18 where applicable.
+- Behavior matching these sources is considered supported and marked resolved in-file when specific; remaining ambiguous details retain TODO:VERIFY and are listed in ref/TODO_AUDIT.md for later authoritative sourcing.
