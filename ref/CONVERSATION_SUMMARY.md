@@ -99,5 +99,14 @@ These refinement requirements will be applied across the repo starting with the 
 **Actions taken:**
 - Will move general definition docs (Instruction.md, STD2.md, EXTEND.md) to `ref/definitions/` and create `ref/block2/definitions/` for Block-2-specific defs.
 
+**Reference backup requirement (2025-12-07T08:11:54.662Z):**
+- Substantial references (e.g., SCALER channel widths, bank timing rules, parity tables) must be backed by explicit citations in the repository (PDF page references or external memos) when added to instruction docs.
+- If the source is uncertain or inferred (training-derived), mark the location with `TODO:VERIFY` and annotate the rationale (e.g., "inferred from training/model", "OCR unreadable", or a link to the commit that introduced the inference).
+- Keep `TODO:VERIFY` entries concise and searchable; they will be audited later for authoritative sourcing.
+
 *File created: `ref/CONVERSATION_SUMMARY.md`*
 
+
+Audit
+- Scanned repository PDFs (ref/moon/AEAProgrammingReference.pdf, ref/moon/agcis_3_central_processor.pdf, ref/moon/agcis_2_machine_instructions.pdf) on 2025-12-07 for authoritative support; if evidence exists it is noted here. Initial audit: authoritative support not found in repo PDFs or ambiguous/OCR-unclear, so this file retains `TODO:VERIFY` and is provisionally marked as "inferred from training/model" when applicable.
+- Action: retain `TODO:VERIFY` marker and consult ref/TODO_AUDIT.md for central tracking. If additional AGC memos or hardware logs are available, add citations below or update this Audit block.

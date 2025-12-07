@@ -77,3 +77,7 @@ Inline notes
 Edge cases / TODOs
 - Sign encoding details (plus-zero vs minus-zero) are complex in AGC; where ambiguous, entries are marked with `TODO:VERIFY` for later validation against memos or hardware tests.
 - Behavior for E-memory editing during CCS (restore/write-back) is marked `TODO:VERIFY` where the PDF's OCR is unclear.
+
+Audit
+- Scanned repository PDFs (ref/moon/AEAProgrammingReference.pdf, ref/moon/agcis_3_central_processor.pdf, ref/moon/agcis_2_machine_instructions.pdf) on 2025-12-07 for authoritative support; if evidence exists it is noted here. Initial audit: authoritative support not found in repo PDFs or ambiguous/OCR-unclear, so this file retains `TODO:VERIFY` and is provisionally marked as "inferred from training/model" when applicable.
+- Action: retain `TODO:VERIFY` marker and consult ref/TODO_AUDIT.md for central tracking. If additional AGC memos or hardware logs are available, add citations below or update this Audit block.
