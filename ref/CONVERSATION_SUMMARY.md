@@ -70,5 +70,11 @@ If you want me to proceed now, reply with “Proceed” and I will begin reading
 
 [Instruction type documented: `ref/Instruction.md`]
 
+**Recent requirement changes (2025-12-07T07:51:09Z):**
+- C-like pseudocode required in all Block-2 and instruction docs (use uint16_t/int16_t and the Instruction typedef).
+- Instruction type documented at ref/Instruction.md; STD2 and EXTEND helpers documented at ref/STD2.md and ref/EXTEND.md — per-instruction docs should reference these helpers.
+- Commit messages for AI-generated edits must start with "[AI]" and include an ISO timestamp; do NOT modify the repo git user config.
+- Avoid re-reading the entire Block-2 PDF; process in targeted page-chunks and prefer reading recent commit messages for agentic context.
+
 *File created: `ref/CONVERSATION_SUMMARY.md`*
 
