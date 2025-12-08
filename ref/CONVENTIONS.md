@@ -58,66 +58,102 @@ rupt.md     # Interrupt handling (special case)
 
 ## Pseudocode Style
 
-### Block-1 Style: Canonical Helpers
+### Modern Unified Style (Both Blocks)
 
-Use reusable helper functions defined in `ref/definitions/`:
+Use modern, readable pseudocode with inline subinstructions and comments referencing canonical definitions:
 
 ```c
 void AD_K(uint16_t K) {
-    // Fetch operand
-    STMIC_stage();  // Standard memory inquiry
-    uint16_t operand = read_memory(K);
+    // Fetch next instruction (subinstruction STD2 part 1)
+    // See ref/definitions/STD2.md for canonical subinstruction definition
+    uint16_t next_addr = Z;
+    S = next_addr;
+    
+    // Read operand from memory
+    uint16_t operand = memory[K];
     
     // Perform addition
     A = A + operand;
     
-    // Standard completion
-    STD2();  // See ref/definitions/STD2.md
-}
-```
-
-**Characteristics:**
-- Call canonical helpers by name: `STD2()`, `EXTEND()`, `STMIC_stage()`
-- Keep functions concise and readable
-- Reference definitions with comments: `// See ref/definitions/STD2.md`
-- Minimize inline code unless instruction-specific
-
-### Block-2 Style: Inline with Annotations
-
-Inline small helpers when it improves clarity, with explanation:
-
-```c
-void AD_K(uint16_t K) {
-    // Standard memory inquiry (inlined for Block-2 timing clarity)
-    // (See ref/definitions/STD2.md for canonical version)
-    uint16_t z = Z;
-    S = z; Y = z; X = 0;
-    if (S >= 0o20) G = MEM[S];
-    
-    // Perform addition
-    A = A + G;
-    
-    // Inline STD2 for Block-2 subinstruction fusion
-    // (See ref/definitions/STD2.md for canonical version)
+    // Branch to next instruction (subinstruction STD2 part 2)
+    // See ref/definitions/STD2.md
     Z = Z + 1;
-    S = Z;
-    // ... rest of STD2 ...
+    
+    // Decode next instruction
+    B = memory[Z];
 }
 ```
 
-**Characteristics:**
-- Inline small helpers with comment header
-- Always reference canonical version: `// (See ref/definitions/STD2.md ...)`
-- Add "Inline notes" section explaining rationale (timing, fusion, etc.)
-- Use when Block-2 timing requires different sequencing
+**Key Principles:**
+- **Inline subinstructions** - Don't call `STD2()` or `STMIC_stage()` as functions
+- **Add reference comments** - Point to canonical definition files
+- **Use modern terminology** - "branch", "decode", "read", "write" instead of pulses
+- **Focus on behavior** - What happens, not how hardware implements it
+- **Keep it verifiable** - Code should match instruction semantics
+- **Keep it usable** - Implementer can follow without hardware details
 
-**When to Inline:**
-✅ Block-2 timing requires fused subinstructions
-✅ Improves clarity of instruction-specific control flow
-✅ Subinstruction boundary is instruction-specific
+**Subinstruction Handling:**
+```c
+// Example: Inlining STD2 with reference
+// Standard completion sequence (STD2)
+// See ref/definitions/STD2.md for canonical definition
+Z = Z + 1;              // Increment program counter
+B = memory[Z];          // Fetch next instruction
+SQ = extract_order_code(B);  // Decode operation
+```
 
-❌ Don't inline just to avoid function calls
-❌ Don't inline without annotation/rationale
+**Don't:**
+❌ Use function calls for subinstructions: `STD2();`
+❌ Use hardware pulse names: `RZ`, `WS`, `WG1G`
+❌ Separate Block-1 and Block-2 styles
+❌ Omit reference comments to canonical definitions
+
+**Do:**
+✅ Inline all subinstructions with clear comments
+✅ Reference canonical definitions: `// See ref/definitions/STD2.md`
+✅ Use modern terms: branch, decode, fetch, store
+✅ Show actual behavior in clear, verifiable steps
+✅ Use same style for both Block-1 and Block-2
+
+## Modern Terminology
+
+Use clear, modern terms instead of hardware implementation details:
+
+**Prefer Modern Terms:**
+- ✅ `branch` - Control flow change (not "transfer control", "TC")
+- ✅ `decode` - Extract opcode/address from instruction
+- ✅ `fetch` - Read from memory
+- ✅ `store` - Write to memory
+- ✅ `read` - Get value from register/memory
+- ✅ `write` - Set value in register/memory
+- ✅ `test` - Check condition (CCS = "count, compare, skip")
+- ✅ `skip` - Conditional branch
+- ✅ `accumulator` - Register A
+- ✅ `program counter` - Register Z
+
+**Avoid Hardware Terms in Pseudocode:**
+- ❌ Pulse names: `RZ`, `WS`, `WG1G`, `RL`, `WA`
+- ❌ "Stage" (use "fetch" or "read")
+- ❌ "Inquiry cycle" (just show the memory read)
+- ❌ "Write amplifier" (just show the write operation)
+- ❌ "STMIC" (inline the actual fetch operations)
+
+**Example - Before (hardware-focused):**
+```c
+// STMIC stage
+RZ; WS; WY;  // Control pulses
+if (S >= 0o20) { RL; }
+```
+
+**Example - After (behavior-focused):**
+```c
+// Fetch next instruction address
+uint16_t next_addr = Z;
+// Read from memory if address is valid
+if (next_addr >= 0o20) {
+    instruction = memory[next_addr];
+}
+```
 
 ## Type Conventions
 
@@ -143,32 +179,59 @@ uint15_t addr;      // 15-bit address or value field
 **In prose:**
 - Use `(u)int15_t` when discussing 15-bit value fields
 - Use `uint16_t`/`int16_t` for full words
-- Note that AGC words have: Bit 0=parity, Bits 1-15=value, Bit 16=sign (in some contexts)
+- Use `uint12_t` for 12-bit addresses (program counter, S register)
+- Use `uint8_t` for opcodes (4-bit) and flags
+- Note that AGC words have: Bit 0=parity, Bits 1-15=value (some contexts show bit 16 as sign)
 
 ### Helper Functions
 
+Simple utility functions are acceptable for common operations:
+
 ```c
-uint16_t read_register(const char *name);
-void write_register(const char *name, uint16_t value);
+// Type conversion helpers
 int32_t sign_extend15(uint15_t v);  // Sign extend 15-bit to 32-bit
+uint8_t extract_order_code(uint16_t instr);  // Get opcode from instruction
+uint12_t extract_address(uint16_t instr);   // Get address field
+
+// Bit manipulation
+uint8_t count_bits(uint16_t v);  // Count set bits (for parity)
 ```
 
-See `ref/cpu/registers.md` for complete definitions.
+**Prefer inline code over abstraction** - When in doubt, show the actual operations rather than hiding them in function calls.
+
+See `ref/cpu/registers.md` for canonical type definitions.
 
 ## Octal Notation
 
-**Always use `0o` prefix for octal constants:**
+**Use `0o` prefix for octal constants, especially for values that are multiples of 3 bits wide:**
 
 ```c
-✅ if (S >= 0o20) { ... }
-✅ Z = 0o4000;
-✅ mask = 0o7777;
+✅ if (S >= 0o20) { ... }      // Address comparison
+✅ Z = 0o4000;                  // 12-bit address (4 octal digits)
+✅ mask = 0o7777;               // 15-bit mask (5 octal digits)
+✅ opcode = 0o7;                // 3-bit opcode
+✅ channel = 0o177;             // 7-bit I/O channel
 
-❌ if (S >= 020) { ... }   // Don't use C-style octal
-❌ Z = 4000;               // Don't use decimal for octal values
+❌ if (S >= 020) { ... }       // Don't use C-style octal
+❌ Z = 4000;                   // Ambiguous: decimal or octal?
 ```
 
-**Why:** The `0o` prefix is unambiguous and matches Python 3 style.
+**Why:**
+- The `0o` prefix is unambiguous (matches Python 3 style)
+- AGC architecture is naturally octal (3-bit groups)
+- Addresses, masks, and bit fields are clearer in octal
+- 15-bit values fit perfectly in 5 octal digits (0o00000 - 0o77777)
+
+**Prefer octal for:**
+- Memory addresses (12-bit: 0o0000 - 0o7777)
+- Bit masks (3, 6, 9, 12, 15-bit values)
+- Opcodes and instruction fields
+- I/O channel numbers
+
+**Use decimal/hex for:**
+- Counts and loop indices
+- Bit positions (0-14)
+- When decimal is more natural (e.g., "add 1", "divide by 16")
 
 ## Citation Format
 
@@ -306,13 +369,17 @@ Audit
 - ✅ Header with instruction name and description
 - ✅ Source citation (PDF + pages)
 - ✅ Summary section
-- ✅ Pseudocode section
+- ✅ Pseudocode section (with inline subinstructions and reference comments)
 - ✅ Audit block (if file has TODO:VERIFY markers)
 
 ### Optional Sections
 - Representation notes (for encoding clarifications)
-- Inline notes (Block-2 style explanation)
 - Extended notes (for complex behaviors)
+- Block differences (note if Block-1 vs Block-2 behavior differs)
+
+### Deprecated Sections
+- ❌ "Inline notes" - No longer needed with unified style
+- ❌ Separate "Micro-op" sections - Use "Pseudocode" consistently
 
 ## Commit Message Conventions
 
