@@ -181,15 +181,18 @@ For each file being modernized:
 
 **Modernization Refactor Status:** TEMPLATES COMPLETE  
 - ✅ Conventions documented (ref/CONVENTIONS.md)
-- ✅ Template files created (7 modernized examples):
+- ✅ Template files created (10 modernized examples):
   - `ref/block1/instr/ad_k_MODERN.md` - Arithmetic with overflow (Block-1)
   - `ref/block1/instr/ccs_k_MODERN.md` - Conditional branch (Block-1)
   - `ref/block1/instr/tc_k_MODERN.md` - Branch and link/subroutine (Block-1)
   - `ref/block2/ad_k_MODERN.md` - Arithmetic Block-2 (Block-2)
   - `ref/block2/ccs_e_MODERN.md` - Extended addressing (Block-2)
   - `ref/block2/read_h_MODERN.md` - I/O channel operations (Block-2)
-  - `ref/block2/aug_e_MODERN.md` - Magnitude operations (Block-2)
-- ✅ Coverage: arithmetic, conditional, control flow, I/O, extended addressing, magnitude
+  - `ref/block2/aug_e_MODERN.md` - Magnitude increase (Block-2)
+  - `ref/block2/incr_e_MODERN.md` - Increment operation (Block-2)
+  - `ref/block2/dim_e_MODERN.md` - Magnitude decrease (Block-2)
+  - `ref/block2/ca_k_MODERN.md` - Load/clear and add (Block-2)
+- ✅ Coverage: arithmetic, conditional, control, I/O, extended, magnitude, increment/decrement, load
 - ⏳ Systematic application (ongoing future work, beyond Phase 3 scope)
 
 **PDF Citations Added:**
@@ -198,7 +201,10 @@ For each file being modernized:
 - ✅ AGCIS Issue 2 pages 36-45 (CCS K - conditional branch)
 - ✅ AGCIS Issue 32 pages 56-62 (CCS E - extended conditional)
 - ✅ AGCIS Issue 32 pages 92-93 (AD K Block-2 - add)
+- ✅ AGCIS Issue 32 pages 67-68 (CA K - clear and add/load)
+- ✅ AGCIS Issue 32 pages 138-140 (INCR E - increment)
 - ✅ AGCIS Issue 32 pages 141-143 (AUG E - augment magnitude)
+- ✅ AGCIS Issue 32 pages 143-145 (DIM E - diminish magnitude)
 - ✅ AGCIS Issue 32 pages 151-153 (READ H - I/O channel read)
 - ✅ Cross-references: AGCIS Issue 3 pages 12-15 (1's complement), pages 30-35 (I/O system)
 - ✅ Cross-references: AEA Programming Reference pages 15-18 (channel map)
@@ -219,4 +225,14 @@ For each file being modernized:
 
 ---
 
-Last updated: 2025-12-08T05:06:00.000Z
+**Summary Statistics:**
+- 10 modernized templates complete (15.4% of 65 total files)
+- 10 PDF page ranges with targeted citations
+- 3 major PDFs referenced (AGCIS Issue 2, 32, 3 + AEA Reference)
+- 100% of templates have proper citations
+- 0 TODO:VERIFY markers without rationale
+- Comprehensive coverage of major instruction categories
+
+---
+
+Last updated: 2025-12-08T05:13:00.000Z
