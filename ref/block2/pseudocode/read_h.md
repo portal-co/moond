@@ -5,11 +5,9 @@ Read cycle (STMIC) — C-like pseudocode for memory read/write service
 
 void STMIC_read(address_t addr) {
     // Standard memory inquiry cycle: RG, RB, RP etc. per AGCIS
-    word_t w = MEM.read(addr);
-    test_parity(w); // TP
-
-    // Gate into staging buffers used by the CPU (G/B/P as needed)
-    stage_into_buffers(w);
+    word_t word = MEM.read(addr);   // read into G register
+    test_parity(word);              // TP -> alarm if incorrect
+    // Gate into buffers B/P as needed by the instruction
 }
 
 /* Notes/TODOs:
