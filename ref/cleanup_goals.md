@@ -17,27 +17,31 @@ The `ref/` directory contains documentation extracted from AGC PDFs, organized i
 
 ## Cleanup Goals
 
-### Phase 1: Structural Organization (High Priority)
+### Phase 1: Structural Organization (High Priority) ✅ COMPLETE
 
-- [ ] **Audit duplicate instruction files**: Identify all instruction files at ref/ root level that have proper versions in ref/block1/ or ref/block2/. Create a manifest listing:
+- [x] **Audit duplicate instruction files**: Identify all instruction files at ref/ root level that have proper versions in ref/block1/ or ref/block2/. Create a manifest listing:
   - Duplicates (e.g., ref/ccs_k.md vs ref/block1/instr/ccs_k.md)
   - Orphaned files (exist at root but not in proper location)
   - Status recommendation (keep, merge, or archive)
+  - **COMPLETED:** See ref/CLEANUP_MANIFEST.md for full audit (2025-12-08T04:16:00)
 
-- [ ] **Resolve ref/block2/pseudocode/ directory**: Determine status of 21 pseudocode stub files:
+- [x] **Resolve ref/block2/pseudocode/ directory**: Determine status of 21 pseudocode stub files:
   - Compare with main block2 instruction files
   - Identify if they're older versions, working drafts, or complement main files
   - Decision: merge useful content into main files, archive or delete obsolete stubs
   - Document decision rationale in ref/block2/pseudocode/README.md before action
+  - **COMPLETED:** All 21 files archived to ref/_archive/pseudocode_stubs/ (2025-12-08T04:16:00)
 
-- [ ] **Clean up root-level files**: Move or consolidate files that should be nested:
+- [x] **Clean up root-level files**: Move or consolidate files that should be nested:
   - ref/ccs_k.md, ref/dv_k.md, ref/mp_k.md, ref/su_k.md → evaluate vs block1/instr/ versions
   - Keep only: important_goals.md, cleanup_goals.md, CONVERSATION_SUMMARY.md, TODO_AUDIT.md at root
   - Move general docs (agcis_2_machine_instructions*.md) to ref/sources/ or ref/overview/
+  - **COMPLETED:** 4 duplicate instruction files archived, 3 source docs moved to ref/sources/ (2025-12-08T04:16:00)
 
-- [ ] **Remove temporary/working files**:
+- [x] **Remove temporary/working files**:
   - ref/TEMP_INSTR_CHANGES.md → review content, extract anything useful to TODO_AUDIT.md, then delete
   - Any other files marked TEMP, WIP, or similar
+  - **COMPLETED:** TEMP_INSTR_CHANGES.md archived to ref/_archive/working/ (2025-12-08T04:16:00)
 
 ### Phase 2: Documentation Completeness (Medium Priority)
 
@@ -135,11 +139,21 @@ git commit -m "[CLEANUP] Archive superseded ref/ccs_k.md - see block1/instr/ccs_
 
 Track cleanup progress with checkboxes above. When a phase is complete, add timestamp and notes here:
 
-- Phase 1: Not started
+- **Phase 1: ✅ COMPLETE** (2025-12-08T04:16:00.000Z)
+  - Archived 4 duplicate root-level instruction files to ref/_archive/superseded/
+  - Archived 21 pseudocode stub files to ref/_archive/pseudocode_stubs/
+  - Archived TEMP_INSTR_CHANGES.md to ref/_archive/working/
+  - Moved 3 source documentation files to ref/sources/
+  - Removed empty ref/instr/ directory
+  - Created comprehensive CLEANUP_MANIFEST.md audit document
+  - Created git tag: pre-cleanup-20251208
+  - All changes committed with [CLEANUP] prefix
+  - Root level reduced from 12 to 5 files (only index/tracking docs remain)
+  
 - Phase 2: Not started
 - Phase 3: Not started
 - Phase 4: Not started
 
 ---
 
-Last updated: 2025-12-08T04:04:22.664Z
+Last updated: 2025-12-08T04:16:00.000Z

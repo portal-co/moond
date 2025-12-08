@@ -42,7 +42,15 @@ Notes:
 - Process AEAProgrammingReference.pdf - partial (notes at ref/aea/README.md)
 
 **File Counts:**
-- Block-2 instruction files: 41 (plus 21 pseudocode stubs in ref/block2/pseudocode/)
+- Block-2 instruction files: 41 (pseudocode stubs archived to ref/_archive/)
 - Block-1 instruction files: 21
 - TODO:VERIFY markers: 76 across 104 markdown files
 - PDFs available: 5 (all in ref/moon/)
+- Root-level tracking files: 5 (cleanup_goals, CLEANUP_MANIFEST, CONVERSATION_SUMMARY, important_goals, TODO_AUDIT)
+
+**Cleanup Status (2025-12-08T04:16:00):**
+- Phase 1 complete: All duplicate and orphaned files archived safely
+- ref/_archive/ created with superseded/, working/, and pseudocode_stubs/ subdirectories
+- ref/sources/ created for source documentation
+- Root directory now contains only essential tracking documents
+- See ref/cleanup_goals.md and ref/CLEANUP_MANIFEST.md for details
