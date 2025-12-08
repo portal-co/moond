@@ -1,5 +1,8 @@
 **Conversation Summary — AGCIS Documentation Project**
 
+> LOST MEDIA NOTICE (2025-12-08T03:55:20.709Z): Some referenced sources (for example `agc4_memo9_rev_june1967.pdf`) are not present in the repository and appear to be lost media. Future agents should ask a human when they encounter these references; do not assume the files exist.
+
+
 - **Scope:** Read AGCIS PDFs in `ref/moon`, extract instruction & CPU descriptions, modernize into one Markdown file per instruction (under `ref/instr/`) and place CPU/subsystem docs under `ref/cpu/`. Use C-like pseudocode for micro-ops, use `0o` octal prefixes, and `(u)int15_t` / `int16_t`-style types to reflect AGC word semantics.
 
 **What I’ve done so far**
