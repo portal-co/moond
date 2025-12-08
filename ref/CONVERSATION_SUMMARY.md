@@ -147,3 +147,33 @@ Priority list reminder:
 4) AEA (low priority; ref/aea/README.md)
 
 Note: current session timestamp: 2025-12-07T08:42:31.181Z
+
+---
+
+## Status Update (2025-12-08T04:04:22.664Z)
+
+**Goals Review Completed:**
+- Updated ref/important_goals.md with completion status
+- Created ref/cleanup_goals.md for directory organization work
+- Current metrics: 104 markdown files, 76 TODO:VERIFY markers across codebase
+- 7 of 12 major goals completed, 5 in progress
+
+**Key Completed Items:**
+- Block-2 documentation pass: 41 instruction files created under ref/block2/
+- Canonical types and definitions: ref/cpu/registers.md, ref/definitions/{Instruction,STD2,EXTEND}.md
+- Audit system: TODO_AUDIT.md tracking with resolution notes in individual files
+- Citation system: AGCIS Issue 2/3 and AEA page references documented
+- Commit conventions: [AI] prefix with ISO timestamps established
+
+**Remaining Work:**
+- Complete stub instruction files (many Block-2 files need full pseudocode)
+- Refine edge-case documentation (76 TODO:VERIFY markers need resolution)
+- Improve Block-1/Block-2 pseudocode parity (style inconsistencies remain)
+- Process agc4_memo9_rev_june1967.pdf (not yet started)
+- Directory cleanup (see ref/cleanup_goals.md for detailed plan)
+
+**Cleanup Goals Created:**
+- See ref/cleanup_goals.md for comprehensive directory reorganization plan
+- Focuses on: duplicate removal, orphaned file resolution, documentation completeness, safety procedures
+- Phases: 1) Structural (duplicates/orphans), 2) Documentation (READMEs), 3) Content validation, 4) Safety/quality
+- Success criteria defined with 7 checkpoints
