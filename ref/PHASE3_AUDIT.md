@@ -173,16 +173,25 @@ For each file being modernized:
 
 **Phase 3 Status:** IN PROGRESS
 - ✅ Conventions modernized
-- ✅ Stub file audit complete (no stubs)
+- ✅ Stub file audit complete (no stubs found)
+- ✅ Template modernization complete (3 templates created)
 - ⏳ Header standardization in progress
 - ⏳ TODO:VERIFY validation in progress
-- ⏳ Sample modernization in progress
+- ⏳ Citation additions for Block-2 files (15+ files need citations)
 
-**Modernization Refactor Status:** IN PROGRESS
-- ✅ Conventions documented
-- ⏳ Template files being created
-- ⏳ Systematic application (future)
+**Modernization Refactor Status:** TEMPLATES COMPLETE
+- ✅ Conventions documented (ref/CONVENTIONS.md)
+- ✅ Template files created (3 modernized examples):
+  - `ref/block1/instr/ad_k_MODERN.md` - Simple arithmetic (Block-1)
+  - `ref/block1/instr/ccs_k_MODERN.md` - Conditional branch (Block-1)
+  - `ref/block2/ad_k_MODERN.md` - Block-2 with PDF citation
+- ⏳ Systematic application (ongoing future work, beyond Phase 3 scope)
+
+**PDF Citations Added:**
+- ✅ AGCIS Issue 2 pages 36-45 (CCS K instruction)
+- ✅ AGCIS Issue 32 pages 92-93 (AD K Block-2 instruction)
+- ⏳ 15+ Block-2 files still need citations (ads_e, aug_e, bzf_f, ca_k, etc.)
 
 ---
 
-Last updated: 2025-12-08T04:38:00.000Z
+Last updated: 2025-12-08T04:48:00.000Z
