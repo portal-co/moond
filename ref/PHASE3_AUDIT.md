@@ -179,23 +179,30 @@ For each file being modernized:
 - ⏳ TODO:VERIFY validation in progress
 - ⏳ Citation additions for Block-2 files (15+ files need citations)
 
-**Modernization Refactor Status:** TEMPLATES COMPLETE
+**Modernization Refactor Status:** TEMPLATES COMPLETE  
 - ✅ Conventions documented (ref/CONVENTIONS.md)
-- ✅ Template files created (5 modernized examples):
-  - `ref/block1/instr/ad_k_MODERN.md` - Simple arithmetic (Block-1)
+- ✅ Template files created (7 modernized examples):
+  - `ref/block1/instr/ad_k_MODERN.md` - Arithmetic with overflow (Block-1)
   - `ref/block1/instr/ccs_k_MODERN.md` - Conditional branch (Block-1)
-  - `ref/block1/instr/tc_k_MODERN.md` - Branch and link/subroutine call (Block-1)
-  - `ref/block2/ad_k_MODERN.md` - Block-2 with PDF citation
-  - `ref/block2/ccs_e_MODERN.md` - Extended addressing with E-memory (Block-2)
+  - `ref/block1/instr/tc_k_MODERN.md` - Branch and link/subroutine (Block-1)
+  - `ref/block2/ad_k_MODERN.md` - Arithmetic Block-2 (Block-2)
+  - `ref/block2/ccs_e_MODERN.md` - Extended addressing (Block-2)
+  - `ref/block2/read_h_MODERN.md` - I/O channel operations (Block-2)
+  - `ref/block2/aug_e_MODERN.md` - Magnitude operations (Block-2)
+- ✅ Coverage: arithmetic, conditional, control flow, I/O, extended addressing, magnitude
 - ⏳ Systematic application (ongoing future work, beyond Phase 3 scope)
 
 **PDF Citations Added:**
-- ✅ AGCIS Issue 2 pages 18-19 (TC K instruction)
-- ✅ AGCIS Issue 2 pages 31-33 (AD K instruction)
-- ✅ AGCIS Issue 2 pages 36-45 (CCS K instruction)
-- ✅ AGCIS Issue 32 pages 56-62 (CCS E instruction)
-- ✅ AGCIS Issue 32 pages 92-93 (AD K Block-2 instruction)
-- ⏳ 15+ Block-2 files still need citations (ads_e, aug_e, bzf_f, ca_k, dim_e, dv_e, etc.)
+- ✅ AGCIS Issue 2 pages 18-19 (TC K - branch and link)
+- ✅ AGCIS Issue 2 pages 31-33 (AD K - add)
+- ✅ AGCIS Issue 2 pages 36-45 (CCS K - conditional branch)
+- ✅ AGCIS Issue 32 pages 56-62 (CCS E - extended conditional)
+- ✅ AGCIS Issue 32 pages 92-93 (AD K Block-2 - add)
+- ✅ AGCIS Issue 32 pages 141-143 (AUG E - augment magnitude)
+- ✅ AGCIS Issue 32 pages 151-153 (READ H - I/O channel read)
+- ✅ Cross-references: AGCIS Issue 3 pages 12-15 (1's complement), pages 30-35 (I/O system)
+- ✅ Cross-references: AEA Programming Reference pages 15-18 (channel map)
+- ⏳ 15+ Block-2 files still need citations (ads_e, bzf_f, ca_k, dim_e, dv_e, etc.)
 
 **Files Needing Modernization:**
 - ~60+ instruction files with old-style hardware pulses (STMIC_stage, STD2() calls)
@@ -204,4 +211,12 @@ For each file being modernized:
 
 ---
 
-Last updated: 2025-12-08T04:59:00.000Z
+**TODO:VERIFY Validation:**
+- ✅ All markers have rationale (0 without rationale found)
+- ✅ Rationale types verified: OCR unclear, inferred, ambiguous, timing
+- ⏳ Cross-check with TODO_AUDIT.md inventory (pending full validation)
+- Total markers: ~214 in instruction/CPU files
+
+---
+
+Last updated: 2025-12-08T05:06:00.000Z
