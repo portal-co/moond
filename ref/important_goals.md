@@ -48,9 +48,12 @@ Notes:
 - PDFs available: 5 (all in ref/moon/)
 - Root-level tracking files: 5 (cleanup_goals, CLEANUP_MANIFEST, CONVERSATION_SUMMARY, important_goals, TODO_AUDIT)
 
-**Cleanup Status (2025-12-08T04:16:00):**
+**Cleanup Status (2025-12-08T04:21:00):**
 - Phase 1 complete: All duplicate and orphaned files archived safely
+- Phase 2 complete: All directories have README.md, CONVENTIONS.md created
 - ref/_archive/ created with superseded/, working/, and pseudocode_stubs/ subdirectories
 - ref/sources/ created for source documentation
 - Root directory now contains only essential tracking documents
+- 6 README files created for major directories (block1/instr, block2, cpu, definitions, sources, moon)
+- ref/CONVENTIONS.md documents all naming, style, and quality conventions
 - See ref/cleanup_goals.md and ref/CLEANUP_MANIFEST.md for details

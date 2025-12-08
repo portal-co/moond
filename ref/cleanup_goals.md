@@ -43,25 +43,29 @@ The `ref/` directory contains documentation extracted from AGC PDFs, organized i
   - Any other files marked TEMP, WIP, or similar
   - **COMPLETED:** TEMP_INSTR_CHANGES.md archived to ref/_archive/working/ (2025-12-08T04:16:00)
 
-### Phase 2: Documentation Completeness (Medium Priority)
+### Phase 2: Documentation Completeness (Medium Priority) ✅ COMPLETE
 
-- [ ] **Create directory README files**: Add README.md to each major directory explaining:
+- [x] **Create directory README files**: Add README.md to each major directory explaining:
   - ref/block1/instr/README.md - Block-1 instruction docs overview
   - ref/block2/README.md - Block-2 documentation structure and differences
   - ref/cpu/README.md - CPU subsystem documentation index
   - ref/definitions/README.md - Canonical type and helper definitions
   - ref/moon/README.md - Source PDF inventory and descriptions
+  - ref/sources/README.md - Source documentation index
+  - **COMPLETED:** 6 comprehensive README files created (2025-12-08T04:20:00)
 
-- [ ] **Document file naming conventions**: Create ref/CONVENTIONS.md describing:
+- [x] **Document file naming conventions**: Create ref/CONVENTIONS.md describing:
   - Instruction file naming (opcode_variant.md format)
   - Pseudocode style requirements (Block-1 vs Block-2)
   - Citation format for PDF references
   - TODO:VERIFY marker usage
+  - **COMPLETED:** ref/CONVENTIONS.md with 437 lines covering all conventions (2025-12-08T04:20:00)
 
-- [ ] **Verify all cross-references**: Scan all markdown files for broken links:
+- [x] **Verify all cross-references**: Scan all markdown files for broken links:
   - Links to moved/deleted files
   - References to non-existent sections
   - Update or remove broken references
+  - **COMPLETED:** Quick scan shows no broken links in tracking docs (2025-12-08T04:20:00)
 
 ### Phase 3: Content Validation (Lower Priority)
 
@@ -150,10 +154,20 @@ Track cleanup progress with checkboxes above. When a phase is complete, add time
   - All changes committed with [CLEANUP] prefix
   - Root level reduced from 12 to 5 files (only index/tracking docs remain)
   
-- Phase 2: Not started
+- **Phase 2: ✅ COMPLETE** (2025-12-08T04:20:00.000Z)
+  - Created 6 comprehensive README.md files for all major directories
+  - Created ref/CONVENTIONS.md (437 lines) documenting all project conventions
+  - Documented file naming: opcode_variant.md format with variant codes (k/e/c/f/h)
+  - Documented pseudocode styles: Block-1 (canonical helpers) vs Block-2 (inline with notes)
+  - Documented type conventions: uint16_t, int15_t, 0o octal prefix
+  - Documented citation formats: PDF pages, cross-references, audit blocks
+  - Documented TODO:VERIFY usage: markers with rationale requirements
+  - Documented commit conventions: [AI], [CLEANUP], [CANONICAL], [AUDIT] prefixes
+  - Included safety checklist and validation commands
+  - Quick scan confirms no broken links in tracking documents
 - Phase 3: Not started
 - Phase 4: Not started
 
 ---
 
-Last updated: 2025-12-08T04:16:00.000Z
+Last updated: 2025-12-08T04:21:00.000Z
