@@ -181,17 +181,27 @@ For each file being modernized:
 
 **Modernization Refactor Status:** TEMPLATES COMPLETE
 - ✅ Conventions documented (ref/CONVENTIONS.md)
-- ✅ Template files created (3 modernized examples):
+- ✅ Template files created (5 modernized examples):
   - `ref/block1/instr/ad_k_MODERN.md` - Simple arithmetic (Block-1)
   - `ref/block1/instr/ccs_k_MODERN.md` - Conditional branch (Block-1)
+  - `ref/block1/instr/tc_k_MODERN.md` - Branch and link/subroutine call (Block-1)
   - `ref/block2/ad_k_MODERN.md` - Block-2 with PDF citation
+  - `ref/block2/ccs_e_MODERN.md` - Extended addressing with E-memory (Block-2)
 - ⏳ Systematic application (ongoing future work, beyond Phase 3 scope)
 
 **PDF Citations Added:**
+- ✅ AGCIS Issue 2 pages 18-19 (TC K instruction)
+- ✅ AGCIS Issue 2 pages 31-33 (AD K instruction)
 - ✅ AGCIS Issue 2 pages 36-45 (CCS K instruction)
+- ✅ AGCIS Issue 32 pages 56-62 (CCS E instruction)
 - ✅ AGCIS Issue 32 pages 92-93 (AD K Block-2 instruction)
-- ⏳ 15+ Block-2 files still need citations (ads_e, aug_e, bzf_f, ca_k, etc.)
+- ⏳ 15+ Block-2 files still need citations (ads_e, aug_e, bzf_f, ca_k, dim_e, dv_e, etc.)
+
+**Files Needing Modernization:**
+- ~60+ instruction files with old-style hardware pulses (STMIC_stage, STD2() calls)
+- Templates established for systematic conversion (future work)
+- Priority: Files with missing citations first, then systematic modernization
 
 ---
 
-Last updated: 2025-12-08T04:48:00.000Z
+Last updated: 2025-12-08T04:59:00.000Z
