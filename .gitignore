@@ -1,4 +1,6 @@
+.DS_Store
 /out-*
 cc-copy
+node_modules
 out
 target
