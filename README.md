@@ -1,13 +1,14 @@
 # moond
 
 ## Description
-Project moond
+"Moon landing emulator designed for the future". A low-level system or emulator project.
 
 ## Goals
-- [ ] Add project goals
+- [ ] Emulate target system ("Moon")
+- [ ] Provide C bindings (`bindgen`)
 
 ## Progress
-- [ ] Initial setup
+- [ ] Workspace setup with `moond-sys`
 
 ---
 *AI assisted*
