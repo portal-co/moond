@@ -1,21 +1,27 @@
 # READ H — Read Channel H into A (Block-2)
 
+Source: `agcis_32_block2_instructions.pdf` — pages 151–153 (AGCIS Issue 32).
+
 Summary
-- Read the content of channel H into register A. Channel addresses are supplied by GSE or by the instruction's operand, depending on usage.
+- Read the content of I/O channel H into register A. Channel addresses map to hardware interfaces.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// READ H: Read I/O channel into accumulator
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void READ_H(uint16_t H) {
-    // Standard memory/channel inquiry
-    STMIC_stage();
-
-    // Read channel H (read_channel handles I/O mapping and 14/16-bit channel widths)
+    // Read from I/O channel (handles 14/16-bit channel widths)
+    // Channel mapping defined in AEA Programming Reference pages 15-18
     A = read_channel(H);
 
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - read_channel(H) returns the channel content as a 15-bit/16-bit value; for display-only channels the helper should zero-extend or sign-extend as appropriate.

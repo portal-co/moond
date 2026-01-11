@@ -1,37 +1,36 @@
 # MP K — Multiply by K (Block-2)
 
 Summary
-- Multiply A by memory K producing a double-precision product in A (high) and L (low). Uses multi-step subinstructions; modernized into one routine.
+- Multiply A by memory K producing a double-precision product in A (high) and L (low).
 
 Pseudocode
 
-// Inlined helper notes: STMIC_stage() is implemented inline here for Block-2 to reflect condensed subinstruction timing.
-// Inline notes:
-// - Inlining rationale: Block-2 original microcode fused STMIC and early MP subinstructions in short sequences; inlining preserves that visibility for timing-sensitive emulation.
-// - Reference (canonical helper): ref/Instruction.md::fetch_instruction_via_S and ref/STD2.md for STD2 semantics.
-
+```c
+// MP K: Multiply accumulator by memory (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void MP_K(uint16_t K) {
-    // STMIC_stage() inlined: perform address staging and operand fetch as early micro-ops
-    S = Z; Y = Z; X = 0;
-    if (S >= 0o20) {
-        // G fetch from memory
-        uint16_t g = read_memory(S); // inline read (handles E/F/CP distinctions)
-    }
+    // Fetch multiplicand from memory
+    int32_t multiplicand = sign_extend15(memory[K]);
+    int32_t multiplier = sign_extend15(A);
 
-    // Logical operation (same as Block-1 canonical version)
-    int32_t multiplicand = sign_extend15(read_memory(K));
-    int32_t multiplier   = sign_extend15(A);
+    // Perform multiplication (produces 30-bit result)
+    int32_t full_product = multiplicand * multiplier;
 
-    int32_t full_product = multiplicand * multiplier; // fits in signed 30 bits
-
+    // Store result in double-precision registers
+    // Low 15 bits in L, high 15 bits in A
     L = (uint16_t)(full_product & 0x7FFF);
     A = (uint16_t)((full_product >> 15) & 0x7FFF);
 
-    set_product_sign_and_overflow(full_product); // TODO:VERIFY exact overflow encoding
+    // Set sign and overflow flags if needed
+    set_product_flags(full_product);
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - Inline notes above explain why early micro-ops are shown inline for Block-2.

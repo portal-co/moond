@@ -1,31 +1,43 @@
 # AD K — Add K (Block-2)
 
+Source: `agcis_32_block2_instructions.pdf` — pages 92–93 (AGCIS Issue 32).
+
 Summary
 - Add content of memory location K to register A; result in A, set overflow bits per AGC rules.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// AD K: Add memory into accumulator (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void AD_K(uint16_t K) {
-    // Standard memory inquiry
-    STMIC_stage();
-
-    // Read K and perform signed 15-bit add
+    // Fetch operand from memory address K
+    uint16_t operand = memory[K];
+    
+    // Perform signed 15-bit addition
     int32_t a = sign_extend15(A);
-    int32_t k = sign_extend15(read_memory(K));
-
+    int32_t k = sign_extend15(operand);
     int32_t sum = a + k;
 
-    // Store result (low 15 bits) into A and set overflow per AGC semantics
+    // Store result (low 15 bits) into accumulator
     A = (uint16_t)(sum & 0x7FFF);
-    set_add_overflow_flags(sum);
+    
+    // Set overflow flags if sum exceeds 15-bit range
+    if (sum > 0x3FFF || sum < -0x4000) {
+        set_overflow_flags(sum);
+    }
 
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
-- set_add_overflow_flags(sum) should implement AGC's overflow detection that sets sign/overflow flip-flops and encodes +1/-1 into A where AGC specifies (see ADS/DAS for related behavior)."
+- Block-2 ADD has same behavior as Block-1 but may have different timing characteristics.
+- set_overflow_flags() implements AGC's overflow detection (see ADS/DAS for related behavior).
 Inline notes
 - Block-2 docs inline small STMIC stages and micro-ops to preserve fused subinstruction timing; canonical helpers live in ref/definitions and ref/cpu/registers.md.
 

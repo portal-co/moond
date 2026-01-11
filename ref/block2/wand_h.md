@@ -3,21 +3,29 @@
 Summary
 - Compute logical AND of A and channel H, store the result in A and also write it back to channel H.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// WAND H: Write AND result to channel and accumulator (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void WAND_H(uint16_t H) {
-    STMIC_stage();
+    // Read from I/O channel
+    uint16_t channel_value = read_channel(H);
 
-    uint16_t ch = read_channel(H);
-    uint16_t res = A & ch;
+    // Compute bitwise AND
+    uint16_t result = A & channel_value;
 
-    // Store logical product into both A and channel H
-    A = res;
-    write_channel(H, res);
+    // Store result in both A and channel H
+    A = result;
+    write_channel(H, result);
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - This instruction both reads and writes the addressed channel; write_channel must respect channel formatting and parity rules.

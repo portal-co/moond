@@ -14,55 +14,46 @@ Summary
 Notes on data representation
 - Words are 16-bit quantities in AGC (value bits in positions 1..15, sign bit in 16, parity bit in 0). For brevity we use `(u)int15_t` for the 15-value-bit portion and `(int16_t)` or `(uint16_t)` when sign + value are considered together.
 
-Micro-op (C-like pseudocode)
+Pseudocode
 
 ```c
-// Types used (pseudotype names for clarity)
-// (u)int15_t  : unsigned 15-bit value (bits 1..15)
-// int16_t     : signed 16-bit word (bit16 = sign, bits1..15 = magnitude)
-
+// CCS K: Count, compare, and skip based on tested value
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void CCS_K(uint16_t K) {
-    // STMIC (common fetch & stage group)
-    uint16_t z = Z;               // z = c(Z)  (next address)  -- control pulse RZ
-    S = z;                        // WS
-    Y = z; X = 0;                 // WY
-    // fetch memory into G if S >= 0o20
-    if (S >= 0o20) G = MEM[S];    // Action 6 in AGCIS
-
-    // Stage: copy G->B and parity into P (prepare next instruction)
-    B = G & 0x7FFF;               // RG, WB  (B holds bits 1..15)
-    P = parity(G);                // WP / GP behaviour
-
-    // Inspect content c(K) (present in G):
-    int16_t e = (int16_t)G;       // signed view (16-bit: sign in bit16)
-
-    // Compute behavior per original table (see AGCIS table 2-3)
-    if (e > 0) {
-        // c(K) > +0: A := e - 1 ; next = z + 1
-        A = (int16_t)(e - 1);
-        Z = z + 1;
-    } else if (e == 0) {
-        // c(K) == +0: A := 0 ; next = z + 2
+    // Save current program counter
+    uint16_t next_addr = Z;
+    
+    // Fetch and test value from memory address K
+    int16_t test_value = (int16_t)memory[K];
+    
+    // Conditional branch based on tested value (see AGCIS table 2-3)
+    // Four cases: positive, plus-zero, negative, minus-zero
+    if (test_value > 0) {
+        // c(K) > +0: A := test_value - 1, skip 0 instructions
+        A = (int16_t)(test_value - 1);
+        Z = next_addr + 1;
+    } else if (test_value == 0) {
+        // c(K) == +0: A := 0, skip 1 instruction
         A = 0;
-        Z = z + 2;
-    } else if (e < 0 && !is_minus_zero(G)) {
-        // c(K) < -0 (non -0 negative): A := e - 1 ; next = z + 3
-        A = (int16_t)(e - 1);
-        Z = z + 3;
-    } else { // e == -0 (i.e., minus zero encoded as 0o177777)
-        // c(K) == -0: A := 0 ; next = z + 4
+        Z = next_addr + 2;
+    } else if (test_value < 0 && !is_minus_zero(test_value)) {
+        // c(K) < 0 (not minus-zero): A := test_value - 1, skip 2 instructions
+        A = (int16_t)(test_value - 1);
+        Z = next_addr + 3;
+    } else {
+        // c(K) == -0 (minus-zero = 0o177777): A := 0, skip 3 instructions
         A = 0;
-        Z = z + 4;
+        Z = next_addr + 4;
     }
 
-    // Finalize: stage next instruction's order code into SQ and continue.
-    // (Original AGC: at Action 12 the fetched instruction's order code is loaded to SQ.)
-    SQ = extract_order_code(B);
+    // Fetch and decode next instruction
+    uint16_t next_instr = memory[Z];
+    SQ = extract_order_code(next_instr);
 }
 
-// Helper (pseudocode): detect minus-zero encoding (0o177777)
-bool is_minus_zero(uint16_t word) {
-    return (word & 0x7FFF) == 0x7FFF && ((word >> 15) & 1) == 1; // parity omitted
+// Helper: detect minus-zero encoding in AGC's ones-complement representation
+bool is_minus_zero(int16_t value) {
+    return (value & 0x7FFF) == 0x7FFF;  // All 15 value bits set = minus-zero
 }
 ```
 

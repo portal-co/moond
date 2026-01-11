@@ -6,26 +6,35 @@ Summary
 - Operation: Perform arithmetic `A := A + [K]`. On overflow/underflow, schedule increment/decrement of the overflow counter (PINC/MINC semantics).
 - Modernization: Single micro-op that performs the add and signals overflow actions via helper calls.
 
-Micro-op (C-like pseudocode)
+Pseudocode
 
 ```c
-// Canonicalized AD_K using helpers from ref/cpu/registers.md and ref/Instruction.md
+// AD K: Add memory into accumulator
+// See ref/definitions/STD2.md for canonical subinstruction completion
 void AD_K(uint16_t K) {
-    // Standard memory inquiry and operand read
-    STMIC_stage();
-
+    // Fetch operand from memory address K
+    uint16_t operand = memory[K];
+    
+    // Perform signed 15-bit addition
     int32_t a = sign_extend15(A);
-    int32_t k = sign_extend15(read_memory(K));
-
+    int32_t k = sign_extend15(operand);
     int32_t sum = a + k;
 
-    // Store result (low 15 bits) and set overflow indicators via helper
+    // Store result (low 15 bits) into accumulator
     A = (uint16_t)(sum & 0x7FFF);
-    set_add_overflow_flags(sum); // sets PINC/MINC as required (TODO:VERIFY exact bit mapping)
+    
+    // Set overflow flags if sum exceeds 15-bit range
+    // On overflow: schedule PINC (positive overflow)
+    // On underflow: schedule MINC (negative overflow)
+    if (sum > 0x3FFF || sum < -0x4000) {
+        set_overflow_flags(sum);
+    }
 
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
 ```
 

@@ -3,17 +3,25 @@
 Summary
 - Perform bitwise AND between register A and channel H and store the logical product in A.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// RAND H: Read channel and AND with accumulator (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void RAND_H(uint16_t H) {
-    STMIC_stage();
+    // Read from I/O channel
+    uint16_t channel_value = read_channel(H);
 
-    uint16_t ch = read_channel(H);
-    A = A & ch; // logical AND (bits handled as 15/16 per channel semantics)
+    // Perform bitwise AND
+    A = A & channel_value;
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - Channel reads use read_channel(H) which returns the appropriate bit-width; the AND is performed on the lower 15 bits with special handling for parity/overflow bits where applicable.

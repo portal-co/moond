@@ -1,24 +1,23 @@
 # RESUME — Resume Interrupted Program (Block-2)
 
 Summary
-- RESUME restores saved BRUPT/ZRUPT information from reserved locations and resumes execution of the interrupted program if no higher-priority RUPT is pending.
+- RESUME restores saved BRUPT/ZRUPT information from reserved locations and resumes execution of the interrupted program.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// RESUME: Restore interrupt state and continue (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void RESUME(void) {
-    STMIC_stage();
+    // Restore saved program state from interrupt save locations
+    uint16_t saved_instr = memory[0o17];  // BRUPT location
+    uint16_t saved_pc = memory[0o15];     // ZRUPT location
 
-    // Restore BRUPT and ZRUPT
-    B = read_memory(0o17);    // BRUPT
-    Z = read_memory(0o15);    // ZRUPT
-
-    // Place the restored instruction into sequencing registers and call-forward
-    Instruction inst = fetch_instruction_via_B(B);
-    S = inst.address;
-    SQ = inst.order_code;
-
-    STD2_execute();
+    // Resume execution at saved location
+    Z = saved_pc;
+    SQ = extract_order_code(saved_instr);
 }
+```
 
 Notes
 - RESUME relies on saved BRUPT/ZRUPT locations (0017/0015) and checks the INHINT/RELINT state prior to resuming; helper functions abstract these checks.

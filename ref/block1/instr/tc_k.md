@@ -6,24 +6,23 @@ Summary
 - Operation: Save the current next-address (`Z`) into `Q` and set the program counter `Z` to `K + 1`, then begin execution at the order code fetched from `K`.
 - Modernization: Presented as a single micro-op routine (no subinstructions). Octal constants use `0o` prefix.
 
-Micro-op (C-like pseudocode)
+Pseudocode
 
 ```c
+// TC K: Branch and link (transfer control)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void TC_K(uint16_t K) {
-    uint16_t z = Z;            // next address
-
-    // STMIC: stage memory inquiry for K
-    S = z; Y = z; X = 0;
-    if (S >= 0o20) G = MEM[S];
-    B = G & 0x7FFF;
-    P = parity(G);
-
-    // Save return address and set new PC
-    Q = z;
-    Z = (uint16_t)(B + 1);
-
-    // Load next order code
-    SQ = extract_order_code(B);
+    // Save return address in Q register
+    Q = Z;
+    
+    // Fetch instruction from target address K
+    uint16_t target_instr = memory[K];
+    
+    // Branch: set program counter to K + 1
+    Z = K + 1;
+    
+    // Decode target instruction
+    SQ = extract_order_code(target_instr);
 }
 ```
 

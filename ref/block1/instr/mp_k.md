@@ -5,27 +5,32 @@ Source: `agcis_2_machine_instructions.pdf` — pages 46–60 (figs. 2-17..2-25; 
 Summary
 - Operation: Multiply A by c(K) and accumulate into the `A`/`Q` pair using a shift-and-add algorithm. Modernized version exposes the algorithm as C-like pseudocode suitable for emulation.
 
-Micro-op (C-like pseudocode)
+Pseudocode
 
 ```c
-// Canonicalized MP_K: present logical effect; small helpers used for I/O and sign handling
+// MP K: Multiply accumulator by memory (Block-1)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void MP_K(uint16_t K) {
-    // Standard memory inquiry and operand fetch
-    STMIC_stage();
+    // Fetch multiplicand from memory
+    int32_t multiplicand = sign_extend15(memory[K]);
+    int32_t multiplier = sign_extend15(A);
 
-    int32_t multiplicand = sign_extend15(read_memory(K));
-    int32_t multiplier   = sign_extend15(A);
+    // Perform multiplication (produces 30-bit result)
+    int32_t full_product = multiplicand * multiplier;
 
-    int32_t full_product = multiplicand * multiplier; // logical 30-bit product
-
-    // Store into A (high) and L/Q (low) using canonical 15-bit fields
+    // Store result in double-precision registers
+    // Low 15 bits in L, high 15 bits in A
     L = (uint16_t)(full_product & 0x7FFF);
     A = (uint16_t)((full_product >> 15) & 0x7FFF);
 
-    set_product_sign_and_overflow(full_product); // TODO:VERIFY exact overflow bit rules
+    // Set sign and overflow flags if needed
+    set_product_flags(full_product);
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
 ```
 

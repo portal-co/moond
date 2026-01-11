@@ -1,29 +1,39 @@
 # AUG E — Augment E (Block-2)
 
+Source: `agcis_32_block2_instructions.pdf` — pages 141–143 (AGCIS Issue 32).
+
 Summary
-- Increase the magnitude of the quantity stored at E by one: positive values increment, negative values decrement (preserving sign). Useful for corner-case adjustments (angular resolution increments).
+- Increase the magnitude of the quantity stored at E by one: positive values increment, negative values decrement (preserving sign).
+- Useful for angular resolution adjustments and magnitude operations.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// AUG E: Augment (increase magnitude) of value at E
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void AUG_E(uint16_t E) {
-    STMIC_stage();
+    // Read value from E-memory address
+    int32_t value = sign_extend15(memory[E]);
 
-    int32_t v = sign_extend15(read_memory(E));
-
-    if (v > 0) {
-        v = v + 1; // increment magnitude for positive values
-    } else if (v < 0) {
-        v = v - 1; // decrement magnitude for negative values (more negative)
+    // Increase magnitude (increment if positive, decrement if negative)
+    if (value > 0) {
+        value = value + 1;      // Increment magnitude for positive
+    } else if (value < 0) {
+        value = value - 1;      // Decrement magnitude for negative (more negative)
     } else {
-        // v == 0: define as increment to +1 (matches AGCIS semantics for AUG when zero?)
-        v = 1;
+        value = 1;              // Zero becomes +1
     }
 
-    write_memory(E, (uint16_t)(v & 0x7FFF));
+    // Write back to E-memory (handles E-memory edit/restore)
+    memory[E] = (uint16_t)(value & 0x7FFF);
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - Implementation must handle E-memory edits on write and may trigger Counter Priority Control if E addresses counters.

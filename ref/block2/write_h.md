@@ -1,20 +1,24 @@
 # WRITE H — Write A to Channel H (Block-2)
 
 Summary
-- Write the content of register A into channel H. Channel address H is provided by the instruction or by GSE.
+- Write the content of register A into I/O channel H.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// WRITE H: Write accumulator to I/O channel (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void WRITE_H(uint16_t H) {
-    STMIC_stage();
-
-    // Write A into channel H (write_channel handles width/parity/format)
+    // Write A to I/O channel (handles channel width/parity/format)
     write_channel(H, A);
 
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - write_channel must implement channel-specific formatting and parity as required by the peripheral; see ref/cpu/write_amplifiers.md for channel I/O notes.

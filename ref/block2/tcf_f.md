@@ -1,41 +1,31 @@
 # TCF F — Transfer Control to Fixed F (Block-2)
 
 Summary
-- Transfer control to a fixed F address (no change in register C). Used to jump to a fixed F bank address.
+- Transfer control to a fixed F address (no change in bank register). Used to jump to a fixed F bank address.
 
 Pseudocode
 
+```c
+// TCF F: Transfer control to fixed address (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void TCF_F(uint16_t F) {
-    STMIC_stage();
-    // Do not change C; set next instruction to F (Fixed area)
-    S = F;
-    SQ = extract_order_code(B);
-    STD2_execute();
+    // Fetch instruction from fixed address F
+    uint16_t target_instr = memory[F];
+    
+    // Branch: set program counter to F + 1
+    Z = F + 1;
+    
+    // Decode target instruction
+    SQ = extract_order_code(target_instr);
 }
+```
 
 Notes
-- Behavior matches AGC Issue 32 description; Block-2 notes to follow if differences are observed during full parsing.
-
-Detailed pseudocode
-
-void TCF_F(uint16_t F) {
-    // Standard memory inquiry
-    STMIC_stage();
-
-    // Do not change C; set next instruction pointer to fixed F
-    S = F;
-    SQ = extract_order_code(B); // EXT handling should be done via EXTEND helper
-
-    // STD2 finalization
-    STD2_execute();
-}
-
-Notes
-- TCF_F leaves C unchanged and uses the fixed-area address in F for the next fetch; model as atomic with STD2_execute() encapsulating final pulses.
-- Block-2 differences (placeholder): record any Block-2-specific bank/EXT semantics when discovered.
+- TCF_F leaves bank register unchanged and uses the fixed-area address in F for the next fetch.
+- Block-2 differences: May require prior EXTEND instruction to access extra-code variants.
 
 Inline notes
-- In Block-2 TCF_F may require prior EXTEND to access extra-code variants; inline STMIC to show prefetch effects and reference ref/definitions/EXTEND.md.
+- In Block-2 TCF_F may require prior EXTEND to access extra-code variants. See ref/definitions/EXTEND.md for EXTEND handling.
 
 Edge cases / TODOs
 - Whether TCF_F must be preceded by EXTEND in all bank scenarios: TODO:VERIFY.

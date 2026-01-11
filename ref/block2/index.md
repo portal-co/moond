@@ -1,11 +1,12 @@
 # AGCIS Issue 32 — Block-2 instruction docs
 
-This directory will contain one Markdown file per Block-2 instruction, modernized into C-like pseudocode and prose describing behavioral differences vs Block-1 (AGCIS Issue 2).
+This directory contains one Markdown file per Block-2 instruction, modernized into C-like pseudocode and prose describing behavioral differences vs Block-1 (AGCIS Issue 2).
 
 Conventions
 - Pseudocode uses C-like functions (e.g., `void TC_K(uint16_t K)`), `uint16_t`/`int16_t` for 16-bit words, and `0o` octal prefixes for octal literals.
-- Subinstructions (STD2, RUPT0, etc.) are presented as single atomic routines in the pseudocode.
-- Memory read/write helper: `STMIC_stage()` indicates the standard memory-inquiry/fetch sequence (fetch B/S/X/Y and G where applicable).
+- Subinstructions (STD2, etc.) are inlined with reference comments pointing to canonical definitions.
+- Memory operations use direct `memory[address]` access rather than helper functions.
+- Modern terminology: "branch", "fetch", "store", "decode" instead of hardware pulse names.
 
 Files created (initial set)
 - tc_k.md

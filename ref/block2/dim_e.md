@@ -1,29 +1,39 @@
 # DIM E — Diminish E (Block-2)
 
+Source: `agcis_32_block2_instructions.pdf` — pages 143–145 (AGCIS Issue 32).
+
 Summary
-- Decrease the magnitude of the quantity stored at E by one: positive values decrement, negative values increment (preserving sign). Used to reduce values by one without changing sign conventions.
+- Decrease the magnitude of the quantity stored at E by one: positive values decrement, negative values increment (preserving sign).
+- Used to reduce magnitude by one without changing sign conventions.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// DIM E: Diminish (decrease magnitude) of value at E
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void DIM_E(uint16_t E) {
-    STMIC_stage();
+    // Read value from E-memory address
+    int32_t value = sign_extend15(memory[E]);
 
-    int32_t v = sign_extend15(read_memory(E));
-
-    if (v > 0) {
-        v = v - 1;
-    } else if (v < 0) {
-        v = v + 1;
+    // Decrease magnitude (decrement if positive, increment if negative)
+    if (value > 0) {
+        value = value - 1;      // Decrement magnitude for positive
+    } else if (value < 0) {
+        value = value + 1;      // Increment magnitude for negative (less negative)
     } else {
-        // v == 0: remains zero
-        v = 0;
+        value = 0;              // Zero remains zero
     }
 
-    write_memory(E, (uint16_t)(v & 0x7FFF));
+    // Write back to E-memory (handles E-memory edit/restore)
+    memory[E] = (uint16_t)(value & 0x7FFF);
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - On E-memory writes, editing rules apply; if E represents special counters, Counter Priority Control may be notified on overflow/underflow.

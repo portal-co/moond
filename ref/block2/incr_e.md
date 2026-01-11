@@ -1,26 +1,34 @@
 # INCR E — Increment E (Block-2)
 
+Source: `agcis_32_block2_instructions.pdf` — pages 138–140 (AGCIS Issue 32).
+
 Summary
-- Increment location E by one (useful for counters and state variables). Handles E-memory edit/restore rules and signals Counter Priority Control when counter addresses are involved.
+- Increment location E by one (useful for counters and state variables).
+- Handles E-memory edit/restore rules and Counter Priority Control for counter addresses.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// INCR E: Increment value at E-memory address
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void INCR_E(uint16_t E) {
-    // Standard memory inquiry
-    STMIC_stage();
+    // Read current value from E-memory
+    int32_t value = sign_extend15(memory[E]);
 
-    // Read, increment, and write back (E-memory edit/restore handled by helpers)
-    int32_t v = sign_extend15(read_memory(E));
+    // Increment by one
+    value = value + 1;
 
-    // Increment magnitude by one (overflow bit is lost on writes to E as specified)
-    v = v + 1;
+    // Write back to E-memory (handles E-memory edit/restore)
+    // Counter Priority Control signaled if E is counter address (0o24..0o27)
+    memory[E] = (uint16_t)(value & 0x7FFF);
 
-    write_memory(E, (uint16_t)(v & 0x7FFF));
-
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - If E corresponds to a counter address that requires Counter Priority handling, the implementation must notify the Counter Priority Control on overflow as described in AGCIS (e.g., addresses 0024..0027)."

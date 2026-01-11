@@ -5,24 +5,33 @@ Source: `agcis_2_machine_instructions.pdf` — pages 28–35 (figs. 2-6..2-11; t
 Summary
 - Operation: A := A - c(K) (with extend behavior handled by previous instructions in original AGC). Modernized version performs the subtraction as a single micro-op; carries/borrows and overflow produce `PINC` or `MINC` semantics which are documented here as helper actions.
 
-Micro-op (C-like pseudocode)
+Pseudocode
 
 ```c
-// Canonicalized SU_K using helpers
+// SU K: Subtract memory from accumulator
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void SU_K(uint16_t K) {
-    STMIC_stage();
-
+    // Fetch operand from memory address K
+    uint16_t operand = memory[K];
+    
+    // Perform signed 15-bit subtraction
     int32_t a = sign_extend15(A);
-    int32_t k = sign_extend15(read_memory(K));
-
+    int32_t k = sign_extend15(operand);
     int32_t result = a - k;
 
-    // Store and set overflow helpers
+    // Store result (low 15 bits) into accumulator
     A = (uint16_t)(result & 0x7FFF);
-    set_sub_overflow_flags(result); // TODO:VERIFY exact PINC/MINC mapping
+    
+    // Set overflow flags if result exceeds 15-bit range
+    if (result > 0x3FFF || result < -0x4000) {
+        set_overflow_flags(result);
+    }
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
 ```
 

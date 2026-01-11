@@ -1,26 +1,30 @@
 # MSU E — Modular Subtract E (Block-2)
 
 Summary
-- Compute modular difference of cyclic TWO's complement numbers in A and E (useful for angular differences); result in A.
+- Compute modular difference of cyclic two's complement numbers in A and E (useful for angular differences).
+- Result stored in A.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// MSU E: Modular subtract (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void MSU_E(uint16_t E) {
-    // Standard memory inquiry
-    STMIC_stage();
-
-    // Read operands (A already contains minuend; E supplies subtrahend)
+    // Read operands
     uint16_t minuend = A;
-    uint16_t subtrahend = read_memory(E); // handles E-memory edit/restore
+    uint16_t subtrahend = memory[E];
 
-    // Compute modular TWO's-complement difference (angle subtraction semantics)
-    uint16_t result = twos_modular_subtract(minuend, subtrahend);
-    A = result;
+    // Compute modular two's-complement difference
+    // Used for angular/cyclic arithmetic
+    A = twos_modular_subtract(minuend, subtrahend);
 
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - `twos_modular_subtract` performs cyclic subtraction with final sign correction as described in AGCIS (ensures result is expressed in ONE's complement convention used by AGC for angular values).

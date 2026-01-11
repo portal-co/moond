@@ -1,21 +1,27 @@
 # CA K — Clear and Add K (Block-2)
 
+Source: `agcis_32_block2_instructions.pdf` — pages 67–68 (AGCIS Issue 32).
+
 Summary
-- Clears A and places content of memory location K into A (simple load).
+- Clears accumulator A and loads content of memory location K into A (simple load operation).
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// CA K: Clear and add (load from memory into accumulator)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void CA_K(uint16_t K) {
-    // Standard memory inquiry for K
-    STMIC_stage();
+    // Read value from memory address K
+    // Handles E-memory restore/edit rules if K is in E-memory range
+    A = memory[K];
 
-    // Read content from K (handles CP/E/F memory differences and E-memory restore/edit rules)
-    A = read_memory(K);
-
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - If K addresses E-memory the read/restore path obeys E-memory timing and editing rules; helper `read_memory` encapsulates those details.

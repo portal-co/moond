@@ -1,33 +1,37 @@
 # BZF F — Branch on Zero to Fixed F (Block-2)
 
 Summary
-- Test register A; if zero, take next instruction from F (fixed); otherwise continue. Requires EXTEND to set EXT bit for extra addressing.
+- Test register A; if zero, take next instruction from F (fixed); otherwise continue.
+- Requires EXTEND instruction to set EXT bit for extra addressing.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// BZF F: Branch on zero to fixed address (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
+// See ref/definitions/EXTEND.md for EXTEND instruction handling
 void BZF_F(uint16_t F) {
-    // Standard memory inquiry
-    STMIC_stage();
-
-    // If A == 0 take next instruction from fixed F, otherwise continue
+    // Test accumulator for zero
     if (A == 0) {
-        // Branch taken: load fixed-field instruction from F on next fetch
-        S = F;
-        // NOTE: when EXT bit is required the EXTEND instruction must have been executed
-        // prior to this instruction to set SQ.EXT; derived order code is read by STD2 at time 12.
-        STD2_execute(); // finalize and call forward (covers write/restore timing)
+        // Branch taken: fetch instruction from fixed address F
+        uint16_t target_instr = memory[F];
+        Z = F + 1;
+        SQ = extract_order_code(target_instr);
     } else {
-        // No-branch path: keep normal sequencing and finalize
-        STD2_execute();
+        // Branch not taken: continue to next instruction
+        Z = Z + 1;
+        uint16_t next_instr = memory[Z];
+        SQ = extract_order_code(next_instr);
     }
 }
+```
 
 Notes
-- EXT handling: callers must execute EXTEND() when an Extra-Code/Fixed-F instruction requires SQ.EXT to be set before BZF_F.
-- This pseudocode models the observable behavior; STD2_execute() encapsulates the STD2 subinstruction timing and G/S/B/SQ load semantics.
+- EXT handling: callers must execute EXTEND instruction when an Extra-Code/Fixed-F instruction requires the EXT bit to be set before BZF_F.
+- This pseudocode models the observable branching behavior.
 
 Inline notes
-- BZF_F in Block-2 often relies on EXTEND being executed immediately prior; inlining STMIC makes the dependency clearer. See ref/definitions/EXTEND.md and ref/cpu/registers.md for canonical behavior.
+- BZF_F in Block-2 often relies on EXTEND being executed immediately prior. See ref/definitions/EXTEND.md and ref/cpu/registers.md for canonical behavior.
 
 Edge cases / TODOs
 - Exact timing requirement for EXT bit relative to STD2: TODO:VERIFY.

@@ -1,16 +1,21 @@
 # TCSAJ K — Transfer Control to Specified Address K (Peripheral) (Block-2)
 
 Summary
-- Peripheral-supplied Transfer Control: GSE supplies address K; TCSAJ K loads that address into S and STD2 finalizes fetch (used in ground test and peripherals).
+- Peripheral-supplied transfer control: GSE supplies address K; TCSAJ K loads that address and branches to it.
+- Used in ground test and peripheral operations.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// TCSAJ K: Transfer control with GSE-supplied address (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void TCSAJ_K(uint16_t K_from_gse) {
-    // TCSAJ is typically invoked with K supplied by GSE; model as direct placement
-    S = K_from_gse;
-    // STD2 will fetch the instruction at K and call forward
-    STD2_execute();
+    // Branch to GSE-supplied address
+    Z = K_from_gse;
+    uint16_t target_instr = memory[Z];
+    SQ = extract_order_code(target_instr);
 }
+```
 
 Notes
 - For interactive GSE testing, FETCH/STORE interactions can be modeled by fetch_instruction_via_S and related helpers.

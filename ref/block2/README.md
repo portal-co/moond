@@ -66,11 +66,11 @@ Audit
 
 Example:
 ```c
-// Inline STMIC_stage() for Block-2 timing clarity
-// (See ref/definitions/STD2.md for canonical version)
-uint16_t z = Z;
-S = z; Y = z; X = 0;
-// ... inlined code ...
+// Standard instruction completion (STD2 inline)
+// See ref/definitions/STD2.md for canonical subinstruction definition
+Z = Z + 1;                          // Increment program counter
+uint16_t next = memory[Z];          // Fetch next instruction
+SQ = extract_order_code(next);      // Decode operation
 ```
 
 ### Types and Notation

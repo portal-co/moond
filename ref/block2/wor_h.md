@@ -3,20 +3,29 @@
 Summary
 - Compute bitwise OR of A and channel H, store the result in A and write it back to channel H.
 
-Detailed pseudocode
+Pseudocode
 
+```c
+// WOR H: Write OR result to channel and accumulator (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void WOR_H(uint16_t H) {
-    STMIC_stage();
+    // Read from I/O channel
+    uint16_t channel_value = read_channel(H);
 
-    uint16_t ch = read_channel(H);
-    uint16_t res = A | ch;
+    // Compute bitwise OR
+    uint16_t result = A | channel_value;
 
-    A = res;
-    write_channel(H, res);
+    // Store result in both A and channel H
+    A = result;
+    write_channel(H, result);
 
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - write_channel must handle channel width and parity bits as per peripheral definitions.

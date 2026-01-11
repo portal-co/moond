@@ -1,43 +1,45 @@
 # DV E — Divide by E (Block-2)
 
 Summary
-- Divide double-precision quantity (A,L) by single-precision divisor in E; writes quotient in A and remainder in L. Complex multi-subinstruction sequence is presented as one routine.
+- Divide double-precision quantity (A,L) by single-precision divisor in E.
+- Writes quotient in A and remainder in L.
 
 Pseudocode
 
+```c
+// DV E: Divide double-precision by memory (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void DV_E(uint16_t E) {
-    // Prepare registers and memory access
-    STMIC_stage();
-
     // Compose signed 30-bit dividend from A (high) and L (low)
     int32_t dividend = (sign_extend15(A) << 15) | (sign_extend15(L) & 0x7FFF);
 
-    // Read divisor from E (15-bit signed); read_memory handles E-edit/restore
-    int32_t divisor = sign_extend15(read_memory(E));
+    // Read divisor from E-memory
+    int32_t divisor = sign_extend15(memory[E]);
 
-    // Division-by-zero handling follows AGCIS (may invoke RUPT or defined state changes)
+    // Handle division by zero
     if (divisor == 0) {
         handle_divide_by_zero();
         return;
     }
 
-    // Logical division using two's-complement arithmetic consistent with AGC method
-    // The AGC implements DV via an iterative subinstruction sequence (DVO..DV6);
-    // here we present the logical result while preserving signs and remainder semantics.
+    // Perform division
     int32_t quotient = dividend / divisor;
     int32_t remainder = dividend % divisor;
 
-    // Store quotient (A) and remainder (L) as 15-bit quantities (helpers enforce AGC bit rules)
+    // Store quotient in A, remainder in L
     A = (uint16_t)(quotient & 0x7FFF);
     L = (uint16_t)(remainder & 0x7FFF);
 
-    // Update sign/overflow indicators according to AGC rules
-    set_div_sign_and_overflow(quotient, remainder);
+    // Set division flags
+    set_division_flags(quotient, remainder);
 
-    // Bookkeeping and finalize
-    B = I + 1;
-    STD2_execute();
+    // Standard instruction completion (STD2 inline)
+    // See ref/definitions/STD2.md
+    Z = Z + 1;                          // Increment program counter
+    uint16_t next = memory[Z];          // Fetch next instruction
+    SQ = extract_order_code(next);      // Decode operation
 }
+```
 
 Notes
 - This routine represents the logical effect of the DV0..DV7/DV4 sequence; detailed per-action timing and specific bit-level end-around-carry behavior are encapsulated in helpers (set_div_sign_and_overflow, handle_divide_by_zero) for clarity.

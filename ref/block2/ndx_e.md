@@ -1,31 +1,29 @@
 # NDX E — Index Next Basic Instruction (Block-2)
 
 Summary
-- Indexing instruction: add content of location E to the next instruction (I+1) to derive the effective next instruction.
+- Indexing instruction: add content of location E to the next instruction address to derive the effective instruction.
 
 Pseudocode
 
+```c
+// NDX E: Index next instruction (Block-2)
+// See ref/definitions/STD2.md for canonical subinstruction patterns
 void NDX_E(uint16_t E) {
-    // Standard memory inquiry for E
-    STMIC_stage();
+    // Fetch indexing offset from E
+    int16_t index_value = sign_extend15(memory[E]);
 
-    // Fetch indexing quantity (E) and the instruction at I+1
-    int16_t idx = sign_extend15(read_memory(E));
-    Instruction next_inst = fetch_instruction(I + 1); // returns (order_code, address, raw_word)
+    // Fetch next instruction
+    uint16_t next_instr = memory[Z + 1];
 
-    // Derive new instruction by adding idx to the word/address of next_inst
-    // derive_instruction implements AGC indexing rules: add low 10/12 bits to address portion,
-    // handle EXT bit/quarter codes, wrap/carry, and adjust order code if overflow into opcode bits
-    Instruction derived = derive_instruction(next_inst, idx);
+    // Apply index to instruction address field
+    // AGC indexing adds offset to address bits, preserving opcode
+    uint16_t indexed_instr = apply_index(next_instr, index_value);
 
-    // Place derived instruction as the next to execute (B/S/SQ loaded as in AGC)
-    B = derived.raw_word;
-    S = derived.address;
-    SQ = derived.order_code;
-
-    // Finalize and call forward
-    STD2_execute();
+    // Store modified instruction for execution
+    Z = Z + 1;
+    SQ = extract_order_code(indexed_instr);
 }
+```
 
 Helpers
 - derive_instruction(next_inst, idx): performs bitwise addition of idx to the instruction word/address per AGC rules, preserves EXT semantics, and returns normalized Basic Instruction (not an Extra-Code instruction unless valid).
