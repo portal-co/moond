@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Binary Control Panel</title>
+    <style>
+        body { background: #e0e4e7; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; }
+        .panel { background: white; padding: 40px; border-radius: 2px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 10px solid #2c3e50; position: relative; }
+        
+        .row { display: flex; align-items: center; margin-bottom: 12px; }
+        .row-label { width: 80px; font-size: 10px; color: #777; font-weight: bold; text-transform: uppercase; }
+        
+        .bits { display: flex; gap: 8px; }
+        .bit { width: 14px; height: 14px; background: #111; border-radius: 50%; cursor: pointer; transition: all 0.2s; border: 2px solid #ddd; }
+        .bit.active { background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; border-color: #ff9999; }
+        .bit:hover { transform: scale(1.2); }
+
+        .footer { margin-top: 30px; border-top: 1px solid #eee; pt: 10px; display: flex; justify-content: center; gap: 20px; }
+        .control { width: 10px; height: 10px; border-radius: 50%; background: #999; }
+        .control.red { background: #cc0000; }
+    </style>
+</head>
+<body>
+
+<div class="panel">
+    <div id="grid"></div>
+    
+    <div class="footer">
+        <div class="control"></div>
+        <div class="control red"></div>
+        <div class="control"></div>
+    </div>
+</div>
+
+<script>
+    const grid = document.getElementById('grid');
+    const rowLabels = ['Address', 'Data HI', 'Data LO', 'Instruction', 'Status', 'Buffer'];
+    
+    rowLabels.forEach(label => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'row-label';
+        labelDiv.innerText = label;
+        
+        const bitsDiv = document.createElement('div');
+        bitsDiv.className = 'bits';
+        
+        for(let i=0; i<16; i++) {
+            const bit = document.createElement('div');
+            bit.className = 'bit';
+            // Randomly set some bits for "authentic" look
+            if(Math.random() > 0.8) bit.classList.add('active');
+            bit.onclick = () => bit.classList.toggle('active');
+            bitsDiv.appendChild(bit);
+        }
+        
+        row.appendChild(labelDiv);
+        row.appendChild(bitsDiv);
+        grid.appendChild(row);
+    });
+</script>
+
+</body>
+</html>
