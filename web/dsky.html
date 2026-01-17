@@ -10,7 +10,8 @@
         /* Display Area */
         .top-section { display: flex; gap: 10px; margin-bottom: 20px; height: 180px; }
         .status-panel { flex: 1; background: #3c3f41; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 5px; font-size: 8px; color: #aaa; text-align: center; }
-        .status-panel div { border: 1px solid #555; display: flex; align-items: center; justify-content: center; height: 20px; }
+        .status-panel div { border: 1px solid #555; display: flex; align-items: center; justify-content: center; height: 20px; transition: all 0.2s; }
+        .status-panel div.active { background: #ff3b3b; color: white; }
         
         .numeric-display { flex: 1; background: #121212; border: 2px solid #222; padding: 10px; color: #2fff2f; font-family: 'Courier New', Courier, monospace; font-weight: bold; text-shadow: 0 0 5px #008000; }
         .reg-label { font-size: 10px; color: #888; margin-top: 5px; }
@@ -21,18 +22,24 @@
         button { background: #2a2c2d; color: white; border: 1px solid #111; padding: 15px 5px; font-size: 12px; cursor: pointer; border-radius: 2px; box-shadow: inset 0 1px 1px #555; }
         button:active { background: #1a1a1a; box-shadow: inset 0 2px 5px #000; }
         .btn-dark { background: #111; }
+        
+        .connection-status { position: fixed; top: 10px; right: 10px; padding: 5px 10px; border-radius: 3px; font-size: 11px; }
+        .connection-status.connected { background: #2fff2f; color: #000; }
+        .connection-status.disconnected { background: #ff3b3b; color: #fff; }
     </style>
 </head>
 <body>
 
+<div class="connection-status disconnected" id="connStatus">Disconnected</div>
+
 <div class="dsky">
     <div class="top-section">
-        <div class="status-panel">
-            <div>UPLINK</div><div>TEMP</div>
-            <div>NO ATT</div><div>GIMBAL</div>
-            <div>STBY</div><div>PROG</div>
-            <div>KEY REL</div><div>RESTART</div>
-            <div>OPR ERR</div><div>TRACKER</div>
+        <div class="status-panel" id="statusPanel">
+            <div data-status="UPLINK">UPLINK</div><div data-status="TEMP">TEMP</div>
+            <div data-status="NO ATT">NO ATT</div><div data-status="GIMBAL">GIMBAL</div>
+            <div data-status="STBY">STBY</div><div data-status="PROG">PROG</div>
+            <div data-status="KEY REL">KEY REL</div><div data-status="RESTART">RESTART</div>
+            <div data-status="OPR ERR">OPR ERR</div><div data-status="TRACKER">TRACKER</div>
         </div>
         <div class="numeric-display">
             <div style="display: flex; justify-content: space-between;">
@@ -49,44 +56,80 @@
     </div>
 
     <div class="keypad">
-        <button class="btn-dark" onclick="press('VERB')">VERB</button>
-        <button onclick="press('+')">+</button>
-        <button onclick="num(7)">7</button>
-        <button onclick="num(8)">8</button>
-        <button onclick="num(9)">9</button>
+        <button class="btn-dark" data-key="VERB">VERB</button>
+        <button data-key="+">+</button>
+        <button data-key="7">7</button>
+        <button data-key="8">8</button>
+        <button data-key="9">9</button>
 
-        <button class="btn-dark" onclick="press('NOUN')">NOUN</button>
-        <button onclick="press('-')">-</button>
-        <button onclick="num(4)">4</button>
-        <button onclick="num(5)">5</button>
-        <button onclick="num(6)">6</button>
+        <button class="btn-dark" data-key="NOUN">NOUN</button>
+        <button data-key="-">-</button>
+        <button data-key="4">4</button>
+        <button data-key="5">5</button>
+        <button data-key="6">6</button>
 
-        <button class="btn-dark" onclick="clr()">CLR</button>
-        <button onclick="num(0)">0</button>
-        <button onclick="num(1)">1</button>
-        <button onclick="num(2)">2</button>
-        <button onclick="num(3)">3</button>
+        <button class="btn-dark" data-key="CLR">CLR</button>
+        <button data-key="0">0</button>
+        <button data-key="1">1</button>
+        <button data-key="2">2</button>
+        <button data-key="3">3</button>
 
-        <button class="btn-dark">PRO</button>
-        <button class="btn-dark">ENTR</button>
-        <button class="btn-dark">RSET</button>
-        <button class="btn-dark">KEY REL</button>
-        <button class="btn-dark">CLR</button>
+        <button class="btn-dark" data-key="PRO">PRO</button>
+        <button class="btn-dark" data-key="ENTR">ENTR</button>
+        <button class="btn-dark" data-key="RSET">RSET</button>
+        <button class="btn-dark" data-key="KEY REL">KEY REL</button>
+        <button class="btn-dark" data-key="CLR">CLR</button>
     </div>
 </div>
 
-<script>
-    let currentInput = "";
-    function num(n) {
-        currentInput += n;
-        if(currentInput.length > 5) currentInput = currentInput.slice(-5);
-        document.getElementById('r1').innerText = "+" + currentInput.padStart(5, '0');
+<script type="module">
+    import { agcClient, getPath } from './agc-client.js';
+
+    const registers = ['prog', 'verb', 'noun', 'r1', 'r2', 'r3'];
+    const statusPanel = document.getElementById('statusPanel');
+    const connStatus = document.getElementById('connStatus');
+
+    function updateUI(state) {
+        if (!state.registers) return;
+        
+        for (const reg of registers) {
+            const el = document.getElementById(reg);
+            if (el && state.registers[reg] !== undefined) {
+                el.innerText = state.registers[reg];
+            }
+        }
+        
+        if (state.status) {
+            statusPanel.querySelectorAll('[data-status]').forEach(el => {
+                const key = el.dataset.status;
+                el.classList.toggle('active', !!state.status[key]);
+            });
+        }
     }
-    function clr() {
-        currentInput = "";
-        document.getElementById('r1').innerText = "+00000";
-    }
-    function press(label) { console.log("Pressed: " + label); }
+
+    agcClient.addEventListener('connected', () => {
+        connStatus.className = 'connection-status connected';
+        connStatus.innerText = 'Connected';
+    });
+
+    agcClient.addEventListener('disconnected', () => {
+        connStatus.className = 'connection-status disconnected';
+        connStatus.innerText = 'Disconnected';
+    });
+
+    agcClient.addEventListener('snapshot', (e) => updateUI(e.detail));
+    agcClient.addEventListener('patch', () => updateUI(agcClient.state));
+
+    document.querySelector('.keypad').addEventListener('click', (e) => {
+        const key = e.target.dataset.key;
+        if (key) {
+            agcClient.sendKeypress(key);
+        }
+    });
+
+    agcClient.connect().catch(() => {
+        console.log('WebSocket not available, running in offline mode');
+    });
 </script>
 
 </body>
