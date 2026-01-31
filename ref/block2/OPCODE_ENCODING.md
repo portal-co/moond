@@ -1,8 +1,9 @@
 # Block-2 Opcode Encoding Overview
 
-> Created: 2026-01-31T01:22:00.000Z
+> Created: 2026-01-31T01:22:00.000Z  
+> Updated: 2026-01-31T01:26:00.000Z (added extracode encoding details)
 >
-> Source: `agcis_32_blk2_instructions.pdf` — pages 10–24 (tables 32-2, 32-3).
+> Source: `agcis_32_blk2_instructions.pdf` — pages 10–24 (tables 32-2, 32-3), 163–170 (EXTEND and extracode instructions).
 
 ## Overview
 
@@ -157,11 +158,110 @@ For quarter codes `XX.YZZ`:
 
 Instructions preceded by EXTEND (00.0006) use the extended instruction set. When EXTEND is executed, it sets the SQ-EXT bit, causing the next instruction to be interpreted as an extra-code instruction. This allows many E-type and extended-function instructions.
 
+### EXTEND Instruction
+
+**Order Code:** 00.0006  
+**Execution:** Executes STD2 subinstruction (1 MCT)  
+**Effect:** Sets bit position SQ-EXT to ONE in register SQ
+
+The next instruction fetched after EXTEND is interpreted as an extra-code instruction. The EXTEND instruction itself completes with a standard STD2 subinstruction that increments Z and fetches the next instruction.
+
 ### Extended Instruction Recognition
 
-- Regular instructions: Determined by bits EXT through 13 (whole codes) or EXT through 11 (quarter codes)
-- Extended instructions: Same bit positions but with SQ-EXT bit set to ONE
-- Channel instructions: Determined by bits EXT through 10
+The Sequence Generator (SQG) determines which subinstruction to execute based on:
+- **Regular instructions**: Determined by bits EXT through 13 (whole codes) or EXT through 11 (quarter codes)
+- **Extended instructions**: Same bit positions but with SQ-EXT bit set to ONE
+- **Channel instructions**: Determined by bits EXT through 10
+
+### Instructions Requiring EXTEND Prefix
+
+The following instructions **must** be preceded by EXTEND:
+
+#### E-Type Extended Instructions (Extracode)
+
+| Mnemonic | Order Code | Description |
+|----------|------------|-------------|
+| CCS      | 01.0       | Count, Compare, and Skip on E |
+| TS       | 05.4       | Transfer to Storage E |
+| XCH      | 05.5       | Exchange A and E |
+| LXCH     | 02.2       | Exchange L and E |
+| QXCH     | 12.2       | Exchange Q and E |
+| DXCH     | 05.2       | Double Exchange A and E |
+| NDX      | 05.0       | Index with E (basic instruction form) |
+| SU       | 16.0       | Subtract E |
+| DV       | 11.0       | Divide by E |
+| ADS      | 02.6       | Add to Storage E |
+| DAS      | 02.0       | Double Add to Storage E |
+| INCR     | 02.4       | Increment E |
+| AUG      | 12.4       | Augment E |
+| DIM      | 12.6       | Diminish E |
+| MSU      | 12.0       | Modular Subtract E |
+| STORE    | none       | Store E (peripheral) |
+
+#### Channel Instructions Requiring EXTEND
+
+| Mnemonic | Order Code | Description |
+|----------|------------|-------------|
+| WAND     | 10.3       | Write and AND H |
+| WOR      | 10.5       | Write and OR H |
+| RXOR     | 10.6       | Read and Exclusive OR H |
+
+**Note**: READ (10.0), WRITE (10.1), RAND (10.2), and ROR (10.4) do **not** require EXTEND.
+
+### Extra-Code Instruction Sequence
+
+```
+EXTEND          ; Order code 00.0006 - sets SQ-EXT bit
+XCH 0050        ; Order code 05.5050 - interpreted as extracode XCH E
+; Next instruction executes normally (SQ-EXT cleared after extracode)
+```
+
+The EXTEND instruction:
+1. Executes its own STD2 subinstruction
+2. Sets the SQ-EXT flip-flop to ONE
+3. Increments Z and fetches the next instruction
+4. The next instruction is decoded with SQ-EXT=1, selecting the extracode subinstruction
+5. After the extracode instruction completes, SQ-EXT is cleared
+
+### Extracode Encoding Details
+
+**Without EXTEND (Basic Instructions):**
+```
+Order Code: 05.0XXX  → NDX K (Index with K - uses bits 4-15 for address)
+```
+
+**With EXTEND (Extracode Instructions):**
+```
+EXTEND          → 00.0006 (sets SQ-EXT)
+Order Code: 05.0XXX  → NDX E (Index with E - extracode interpretation)
+```
+
+The same order code bits are interpreted differently based on the SQ-EXT bit state. This effectively doubles the instruction set by providing an alternate interpretation for many opcodes.
+
+### Extracode vs Basic Instruction Disambiguation
+
+| Order Code Range | Without EXTEND | With EXTEND |
+|------------------|----------------|-------------|
+| 01.0             | BZF F          | CCS E       |
+| 02.0             | LXCH E (basic) | DAS E       |
+| 02.2             | LXCH E (basic) | LXCH E      |
+| 02.4             | LXCH E (basic) | INCR E      |
+| 02.6             | LXCH E (basic) | ADS E       |
+| 05.0             | NDX K          | NDX E       |
+| 05.2             | TS E (basic)   | DXCH E      |
+| 05.4             | TS E (basic)   | TS E        |
+| 05.5             | XCH E (basic)  | XCH E       |
+| 10.3             | -              | WAND H      |
+| 10.5             | -              | WOR H       |
+| 10.6             | -              | RXOR H      |
+| 11.0             | MP K (basic)   | DV E        |
+| 12.0             | QXCH E (basic) | MSU E       |
+| 12.2             | QXCH E (basic) | QXCH E      |
+| 12.4             | BZF F (basic)  | AUG E       |
+| 12.6             | BZF F (basic)  | DIM E       |
+| 16.0             | BZF F (basic)  | SU E        |
+
+**Note**: Some order codes have different meanings in basic vs extracode mode, while others are only accessible via extracode.
 
 ## Address Field Encoding
 
@@ -256,4 +356,4 @@ The stage counter (ST) and sequence register (SQ) control subinstruction executi
 
 ---
 
-Last updated: 2026-01-31T01:22:00.000Z
+Last updated: 2026-01-31T01:26:00.000Z
