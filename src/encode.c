@@ -6,63 +6,57 @@
 // Encoding table: instruction type -> order code and address bits
 typedef struct {
     moond_instr_type type;
-    uint8_t opcode;           // Order code (3 or 6 bits)
-    uint8_t opcode_bits;      // Number of bits in opcode (3 or 6)
+    uint8_t opcode;           // Order code value
+    uint8_t opcode_bits;      // Number of bits in opcode (3, 5, or 6)
     uint8_t quarter_code;     // Quarter code (0-7), or 0xff if not a quarter code
     uint8_t addr_bits;        // Number of address bits available
     bool requires_extend;     // Requires EXTEND prefix
 } encode_entry;
 
 static const encode_entry encode_table[] = {
-    // Sequence changing
-    {INSTR_TC,      OCTAL(00), 3, 0xff, 12, false},  // TC K - 00.
-    {INSTR_TCF,     OCTAL(01), 6, 2,    12, false},  // TCF F - 01.2/4/6
-    {INSTR_CCS,     OCTAL(01), 6, 0,    12, true},   // CCS E - 01.0 (extracode)
-    {INSTR_BZF,     OCTAL(016), 6, 2,   12, false},  // BZF F - 16.2/4/6
-    {INSTR_BZMF,    OCTAL(012), 6, 2,   12, false},  // BZMF F - 12.2/4/6
+    // Whole code instructions (3-bit opcode + 12-bit address)
+    {INSTR_TC,      0, 3, 0xff, 12, false},     // TC K - 0.
+    {INSTR_CA,      3, 3, 0xff, 12, false},     // CA K - 3.
+    {INSTR_CS,      4, 3, 0xff, 12, false},     // CS K - 4.
+    {INSTR_AD,      6, 3, 0xff, 12, false},     // AD K - 6.
+    {INSTR_MSK,     7, 3, 0xff, 12, false},     // MSK K - 7.
+    {INSTR_EXTEND,  0, 3, 0xff, 12, false},     // EXTEND - 0.0006
+    {INSTR_INHINT,  0, 3, 0xff, 12, false},     // INHINT - 0.0004
+    {INSTR_RELINT,  0, 3, 0xff, 12, false},     // RELINT - 0.0003
+    {INSTR_GO,      0, 3, 0xff, 12, false},     // GO - 0.4000
     
-    // Fetching and storing
-    {INSTR_CA,      OCTAL(03), 3, 0xff, 12, false},  // CA K - 03.
-    {INSTR_CS,      OCTAL(04), 3, 0xff, 12, false},  // CS K - 04.
-    {INSTR_DCA,     OCTAL(013), 6, 0xff, 9, false},  // DCA K - 13.
-    {INSTR_DCS,     OCTAL(014), 6, 0xff, 9, false},  // DCS K - 14.
-    {INSTR_TS,      OCTAL(05), 6, 4,    12, true},   // TS E - 05.4 (extracode)
-    {INSTR_XCH,     OCTAL(05), 6, 5,    12, true},   // XCH E - 05.5 (extracode)
-    {INSTR_LXCH,    OCTAL(02), 6, 2,    12, true},   // LXCH E - 02.2 (extracode)
-    {INSTR_QXCH,    OCTAL(012), 6, 2,   12, true},   // QXCH E - 12.2 (extracode)
-    {INSTR_DXCH,    OCTAL(05), 6, 2,    12, true},   // DXCH E - 05.2 (extracode)
+    // Quarter code instructions (5-bit opcode + 3-bit quarter + 7-bit address)
+    {INSTR_TCF,     01, 5, 2,    7, false},     // TCF F - 01.2/4/6
+    {INSTR_CCS,     01, 5, 0,    7, true},      // CCS E - 01.0 (extracode)
+    {INSTR_DAS,     02, 5, 0,    7, true},      // DAS E - 02.0 (extracode)
+    {INSTR_LXCH,    02, 5, 2,    7, true},      // LXCH E - 02.2 (extracode)
+    {INSTR_INCR,    02, 5, 4,    7, true},      // INCR E - 02.4 (extracode)
+    {INSTR_ADS,     02, 5, 6,    7, true},      // ADS E - 02.6 (extracode)
+    {INSTR_NDX,     05, 5, 0,    7, false},     // NDX E - 05.0 (can be basic or extracode)
+    {INSTR_DXCH,    05, 5, 2,    7, true},      // DXCH E - 05.2 (extracode)
+    {INSTR_TS,      05, 5, 4,    7, true},      // TS E - 05.4 (extracode)
+    {INSTR_XCH,     05, 5, 5,    7, true},      // XCH E - 05.5 (extracode)
+    {INSTR_RESUME,  05, 5, 0,    7, false},     // RESUME - 05.0017
+    {INSTR_DV,      011, 5, 0,   7, true},      // DV E - 011.0 (extracode)
+    {INSTR_MSU,     012, 5, 0,   7, true},      // MSU E - 012.0 (extracode)
+    {INSTR_QXCH,    012, 5, 2,   7, true},      // QXCH E - 012.2 (extracode)
+    {INSTR_AUG,     012, 5, 4,   7, true},      // AUG E - 012.4 (extracode)
+    {INSTR_DIM,     012, 5, 6,   7, true},      // DIM E - 012.6 (extracode)
+    {INSTR_BZMF,    012, 5, 2,   7, false},     // BZMF F - 012.2/4/6
+    {INSTR_DCA,     013, 5, 0xff, 7, false},    // DCA K - 013. (whole code in 5-bit field)
+    {INSTR_DCS,     014, 5, 0xff, 7, false},    // DCS K - 014. (whole code in 5-bit field)
+    {INSTR_SU,      016, 5, 0,   7, true},      // SU E - 016.0 (extracode)
+    {INSTR_BZF,     016, 5, 2,   7, false},     // BZF F - 016.2/4/6
+    {INSTR_MP,      017, 5, 0xff, 7, true},     // MP K - 017. (whole code, extracode)
     
-    // Modifying
-    {INSTR_NDX,     OCTAL(05), 6, 0,    12, false},  // NDX E/K - 05.0 or 15.
-    
-    // Arithmetic and logic
-    {INSTR_AD,      OCTAL(06), 3, 0xff, 12, false},  // AD K - 06.
-    {INSTR_SU,      OCTAL(016), 6, 0,   12, true},   // SU E - 16.0 (extracode)
-    {INSTR_MP,      OCTAL(017), 6, 0xff, 9, true},   // MP K - 17. (extracode)
-    {INSTR_DV,      OCTAL(011), 6, 0,   12, true},   // DV E - 11.0 (extracode)
-    {INSTR_ADS,     OCTAL(02), 6, 6,    12, true},   // ADS E - 02.6 (extracode)
-    {INSTR_DAS,     OCTAL(02), 6, 0,    12, true},   // DAS E - 02.0 (extracode)
-    {INSTR_INCR,    OCTAL(02), 6, 4,    12, true},   // INCR E - 02.4 (extracode)
-    {INSTR_AUG,     OCTAL(012), 6, 4,   12, true},   // AUG E - 12.4 (extracode)
-    {INSTR_DIM,     OCTAL(012), 6, 6,   12, true},   // DIM E - 12.6 (extracode)
-    {INSTR_MSU,     OCTAL(012), 6, 0,   12, true},   // MSU E - 12.0 (extracode)
-    {INSTR_MSK,     OCTAL(07), 3, 0xff, 12, false},  // MSK K - 07.
-    
-    // Channel
-    {INSTR_READ,    OCTAL(010), 6, 0,   9, false},   // READ H - 10.0
-    {INSTR_WRITE,   OCTAL(010), 6, 1,   9, false},   // WRITE H - 10.1
-    {INSTR_RAND,    OCTAL(010), 6, 2,   9, false},   // RAND H - 10.2
-    {INSTR_WAND,    OCTAL(010), 6, 3,   9, true},    // WAND H - 10.3 (extracode)
-    {INSTR_ROR,     OCTAL(010), 6, 4,   9, false},   // ROR H - 10.4
-    {INSTR_WOR,     OCTAL(010), 6, 5,   9, true},    // WOR H - 10.5 (extracode)
-    {INSTR_RXOR,    OCTAL(010), 6, 6,   9, true},    // RXOR H - 10.6 (extracode)
-    
-    // Special (fixed addresses)
-    {INSTR_EXTEND,  OCTAL(00), 3, 0xff, 12, false},  // EXTEND - 00.0006
-    {INSTR_INHINT,  OCTAL(00), 3, 0xff, 12, false},  // INHINT - 00.0004
-    {INSTR_RELINT,  OCTAL(00), 3, 0xff, 12, false},  // RELINT - 00.0003
-    {INSTR_RESUME,  OCTAL(05), 6, 0,    12, false},  // RESUME - 05.0017
-    {INSTR_GO,      OCTAL(00), 3, 0xff, 12, false},  // GO - 00.4000
+    // Channel instructions (6-bit opcode + 9-bit channel address)
+    {INSTR_READ,    010, 6, 0xff, 9, false},    // READ H - 10.0
+    {INSTR_WRITE,   010, 6, 0xff, 9, false},    // WRITE H - 10.1
+    {INSTR_RAND,    010, 6, 0xff, 9, false},    // RAND H - 10.2
+    {INSTR_WAND,    010, 6, 0xff, 9, true},     // WAND H - 10.3 (extracode)
+    {INSTR_ROR,     010, 6, 0xff, 9, false},    // ROR H - 10.4
+    {INSTR_WOR,     010, 6, 0xff, 9, true},     // WOR H - 10.5 (extracode)
+    {INSTR_RXOR,    010, 6, 0xff, 9, true},     // RXOR H - 10.6 (extracode)
 };
 
 static const size_t encode_table_size = sizeof(encode_table) / sizeof(encode_table[0]);
@@ -136,18 +130,23 @@ moond_encode_result moond_encode_instr(const moond_instr* instr) {
     // Encode based on opcode size and quarter code
     // Note: Using bit reversal to properly encode AGC numeric values
     if (entry->opcode_bits == 3) {
-        // 3-bit opcode: AGC bits 1-3 = opcode, bits 4-15 = address (12 bits)
+        // 3-bit whole code: AGC bits 1-3 = opcode, bits 4-15 = address (12 bits)
         result.word = insert_agc_bits_reversed(0, entry->opcode, 1, 3);
         result.word = insert_agc_bits_reversed(result.word, address & 0x0FFF, 4, 15);
-    } else if (entry->quarter_code == 0xff) {
-        // 6-bit whole code: AGC bits 1-6 = opcode, bits 7-15 = address (9 bits)
+    } else if (entry->opcode_bits == 5) {
+        // 5-bit quarter code: AGC bits 1-5 = opcode, bits 6-8 = quarter, bits 9-15 = address (7 bits)
+        result.word = insert_agc_bits_reversed(0, entry->opcode, 1, 5);
+        if (entry->quarter_code != 0xff) {
+            result.word = insert_agc_bits_reversed(result.word, entry->quarter_code, 6, 8);
+        }
+        result.word = insert_agc_bits_reversed(result.word, address & 0x7F, 9, 15);
+    } else if (entry->opcode_bits == 6) {
+        // 6-bit channel: AGC bits 1-6 = opcode, bits 7-15 = channel address (9 bits)
         result.word = insert_agc_bits_reversed(0, entry->opcode, 1, 6);
         result.word = insert_agc_bits_reversed(result.word, address & 0x01FF, 7, 15);
     } else {
-        // 6-bit quarter code: AGC bits 1-6 = opcode, bits 7-9 = quarter, bits 10-15 = address (6 bits)
-        result.word = insert_agc_bits_reversed(0, entry->opcode, 1, 6);
-        result.word = insert_agc_bits_reversed(result.word, entry->quarter_code, 7, 9);
-        result.word = insert_agc_bits_reversed(result.word, address & 0x3F, 10, 15);
+        result.error = "Invalid opcode bit width";
+        return result;
     }
     
     result.success = true;

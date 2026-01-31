@@ -15,18 +15,18 @@ This document describes the instruction encoding format for AGC Block-2 machine 
 
 ## Instruction Word Format
 
-The AGC Block-2 has three instruction formats, determined by opcode field width:
+The AGC Block-2 has three instruction formats, determined by opcode field width. The **EXTEND bit** (from a preceding EXTEND instruction) determines whether certain opcodes are interpreted as basic or extracode instructions.
 
 ### Format 1: Whole Code Instructions (3-bit opcode)
 ```
 Bit:  0  | 1 2 3 | 4 5 6 7 8 9 10 11 12 13 14 15
       P  | Opc3  |        12-bit Address           |
 ```
-- Examples: TC (00.), CA (03.), CS (04.), AD (06.), MSK (07.)
+- Examples: TC (0.), CA (3.), CS (4.), AD (6.), MSK (7.)
 - **Bits 1-3**: 3-bit opcode (0-7 octal)
 - **Bits 4-15**: 12-bit address (0000-7777 octal)
 - Notation: Single octal digit + "." (e.g., "0.", "3.", "4.")
-- Note: Opcode values 0-7 only; higher values use different formats
+- **EXTEND bit**: Not used (these are always basic instructions)
 
 ### Format 2: Quarter Code Instructions (5-bit opcode + 3-bit quarter)
 ```
@@ -38,6 +38,7 @@ Bit:  0  | 1 2 3 4 5 | 6 7 8 | 9 10 11 12 13 14 15
 - **Bits 6-8**: 3-bit quarter code (0-7 octal)
 - **Bits 9-15**: 7-bit address (000-177 octal)
 - Notation: Two-digit octal + "." + one digit (e.g., "01.2", "05.4")
+- **EXTEND bit**: Distinguishes extracode variants (e.g., CCS 01.0 requires EXTEND, TCF 01.2 does not)
 
 ### Format 3: Channel Instructions (6-bit opcode + 9-bit address)
 ```
@@ -47,8 +48,9 @@ Bit:  0  | 1 2 3 4 5 6 | 7 8 9 10 11 12 13 14 15
 - Examples: READ (10.0), WRITE (10.1), RAND (10.2), ROR (10.4)
 - **Bits 1-6**: 6-bit opcode (010 octal for all channel instructions)
 - **Bits 7-15**: 9-bit channel address (000-777 octal)
-- Notation: "10." + quarter digit, but bits 7-9 are part of the 9-bit channel address
-- Note: Despite notation like "10.0", this is NOT a quarter code; all 9 bits (7-15) form the channel address
+- Notation: "10." + digit, but the digit is part of bits 7-9 of the 9-bit channel address
+- **EXTEND bit**: Required for WAND (10.3), WOR (10.5), RXOR (10.6); not required for READ (10.0), WRITE (10.1), RAND (10.2), ROR (10.4)
+- Note: Despite notation like "10.0", this is NOT a quarter code format
 
 ### AGC Bit Ordering and Value Extraction
 
@@ -84,27 +86,37 @@ Block-2 instructions are categorized by their address mode and operation type:
 - **C-type**: Counter/peripheral address
 - **H-type**: I/O channel address
 
-### Order Code Notation and Decoding
+### The EXTEND Bit and Extracode Instructions
 
-**Whole code notation:** `X.` (single octal digit 0-7 followed by period)
-- Examples: `TC 0.`, `CA 3.`, `CS 4.`, `AD 6.`, `MSK 7.`
-- Opcode: Bits 1-3 contain value 0-7 octal (3 bits)
-- Address: Bits 4-15 (12 bits, 0000-7777 octal)
-- These are the "basic" instructions with full 12-bit addressing
+The **EXTEND instruction** (order code 0.0006) sets a flip-flop (SQ-EXT) that modifies how the *next* instruction is decoded:
 
-**Quarter code notation:** `XX.Y` (two octal digits ≥ 01, period, one octal digit)
-- Examples: `TCF 01.2`, `CCS 01.0`, `TS 05.4`, `QXCH 12.2`, `BZF 16.2`
-- Opcode: Bits 1-5 contain XX (01-37 octal, 5 bits)
-- Quarter: Bits 6-8 contain Y (0-7 octal, 3 bits)
-- Address: Bits 9-15 (7 bits, 000-177 octal)
-- The quarter field provides sub-variants within the same 5-bit opcode
+- **Without EXTEND** (SQ-EXT=0): Instructions are decoded as "basic" instructions
+- **With EXTEND** (SQ-EXT=1): Instructions are decoded as "extracode" instructions
 
-**Channel notation:** `10.Y` (special case)
-- Examples: `READ 10.0`, `WRITE 10.1`, `RAND 10.2`, `ROR 10.4`
-- Opcode: Bits 1-6 contain 010 octal (6 bits)
-- Channel Address: Bits 7-15 (9 bits, 000-777 octal)
-- Despite the ".Y" notation, this is NOT a quarter code—bits 7-9 are part of the 9-bit channel address
-- The "Y" in notation "10.Y" is actually bits 7-9 of the channel address, not a quarter field
+Some opcodes have different meanings depending on the EXTEND bit:
+
+| Order Code | Without EXTEND | With EXTEND |
+|------------|----------------|-------------|
+| 01.0       | (invalid)      | CCS E |
+| 05.0       | RESUME (if addr=017) | NDX E |
+| 05.2       | (invalid)      | DXCH E |
+| 05.4       | (invalid)      | TS E |
+| 05.5       | (invalid)      | XCH E |
+| 02.0       | (invalid)      | DAS E |
+| 02.2       | (invalid)      | LXCH E |
+| 02.4       | (invalid)      | INCR E |
+| 02.6       | (invalid)      | ADS E |
+| 10.3       | (invalid)      | WAND H |
+| 10.5       | (invalid)      | WOR H |
+| 10.6       | (invalid)      | RXOR H |
+| 11.0       | (invalid)      | DV E |
+| 12.0       | (invalid)      | MSU E |
+| 12.2       | BZMF F         | QXCH E |
+| 12.4       | BZMF F         | AUG E |
+| 12.6       | BZMF F         | DIM E |
+| 16.0       | BZF F          | SU E |
+
+The EXTEND bit is automatically cleared after the next instruction executes.
 
 ## Regular Instructions
 
