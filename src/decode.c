@@ -83,9 +83,11 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     
     // ========================================================================
     // SECTION 2: Quarter Code Instructions (5-bit opcode + 3-bit quarter + 7-bit address)
+    // Order codes 0X.Y only decode without EXTEND (unless specific quarter requires it)
+    // Order codes 1X.Y only decode with EXTEND
     // ========================================================================
     
-    // Order code 01.x
+    // Order code 01.x (starts with 0)
     if (opcode_5 == 01) {
         result.quarter_code = quarter;
         result.opcode = opcode_5;
@@ -95,7 +97,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.address = addr_7;
             result.requires_extend = true;
             result.status++;
-        } else if (quarter == 2 || quarter == 4 || quarter == 6) {
+        } else if ((quarter == 2 || quarter == 4 || quarter == 6) && !extend_bit) {
             result.type = INSTR_TCF;
             result.addr_mode = ADDR_F;
             result.address = addr_7;
@@ -103,40 +105,38 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    // Order code 02.x
-    if (opcode_5 == 02) {
+    // Order code 02.x (starts with 0, but all variants require EXTEND)
+    if (opcode_5 == 02 && extend_bit) {
         result.quarter_code = quarter;
         result.opcode = opcode_5;
-        if (extend_bit) {
-            if (quarter == 0) {
-                result.type = INSTR_DAS;
-                result.addr_mode = ADDR_E;
-                result.address = addr_7;
-                result.requires_extend = true;
-                result.status++;
-            } else if (quarter == 2) {
-                result.type = INSTR_LXCH;
-                result.addr_mode = ADDR_E;
-                result.address = addr_7;
-                result.requires_extend = true;
-                result.status++;
-            } else if (quarter == 4) {
-                result.type = INSTR_INCR;
-                result.addr_mode = ADDR_E;
-                result.address = addr_7;
-                result.requires_extend = true;
-                result.status++;
-            } else if (quarter == 6) {
-                result.type = INSTR_ADS;
-                result.addr_mode = ADDR_E;
-                result.address = addr_7;
-                result.requires_extend = true;
-                result.status++;
-            }
+        if (quarter == 0) {
+            result.type = INSTR_DAS;
+            result.addr_mode = ADDR_E;
+            result.address = addr_7;
+            result.requires_extend = true;
+            result.status++;
+        } else if (quarter == 2) {
+            result.type = INSTR_LXCH;
+            result.addr_mode = ADDR_E;
+            result.address = addr_7;
+            result.requires_extend = true;
+            result.status++;
+        } else if (quarter == 4) {
+            result.type = INSTR_INCR;
+            result.addr_mode = ADDR_E;
+            result.address = addr_7;
+            result.requires_extend = true;
+            result.status++;
+        } else if (quarter == 6) {
+            result.type = INSTR_ADS;
+            result.addr_mode = ADDR_E;
+            result.address = addr_7;
+            result.requires_extend = true;
+            result.status++;
         }
     }
     
-    // Order code 05.x
+    // Order code 05.x (starts with 0, but most variants require EXTEND)
     if (opcode_5 == 05) {
         result.quarter_code = quarter;
         result.opcode = opcode_5;
