@@ -22,10 +22,14 @@ fn main() -> std::io::Result<()> {
     let includes = ["cc-copy/src", "cc-copy/include"].map(|a| format!("{m}/{a}"));
     cc::Build::new()
         .includes(&includes)
-        .files(["core.c"].into_iter().map(|a| format!("cc-copy/src/{a}")))
+        .files(
+            ["core.c", "decode.c"]
+                .into_iter()
+                .map(|a| format!("cc-copy/src/{a}")),
+        )
         .compile("moond");
     let mut b = bindgen::Builder::default();
-    for h in ["core.h"] {
+    for h in ["core.h", "decode.h"] {
         b = b.header(format!("{m}/cc-copy/include/{h}"));
     }
     b.layout_tests(false)
