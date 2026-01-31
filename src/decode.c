@@ -24,9 +24,36 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     
     // Decode based on opcode and extend bit
     // Use OCTAL() macro for clarity on octal constants
+    // Check 6-bit opcodes (quarter codes and whole codes) BEFORE 3-bit opcodes
+    // to avoid false matches on the top 3 bits
     
-    // Special fixed addresses (checked first)
-    if (opcode_3 == OCTAL(00)) {
+    // Quarter codes - check 6-bit opcode first
+    if (opcode_6 == OCTAL(01)) {
+        result.quarter_code = quarter;
+        result.opcode = opcode_6;
+        if (quarter == 0 && extend_bit) {
+            // CCS E - order code 01.0 (extracode)
+            result.type = INSTR_CCS;
+            result.addr_mode = ADDR_E;
+            result.address = addr_12;
+            result.requires_extend = true;
+            return result;
+        } else if (quarter == 2 || quarter == 4 || quarter == 6) {
+            // TCF F - order code 01.2, 01.4, 01.6
+            result.type = INSTR_TCF;
+            result.addr_mode = ADDR_F;
+            result.address = addr_12;
+            return result;
+        }
+    }
+    
+    // Continue with other 6-bit opcodes...
+    // (rest of quarter code checks will go here)
+    
+    // Now check 3-bit opcodes (these should come AFTER 6-bit checks)
+    // Special fixed addresses (checked first among 3-bit opcodes)
+    // But skip if this is actually a 6-bit opcode we haven't handled yet
+    if (opcode_3 == OCTAL(00) && opcode_6 != OCTAL(01)) {
         if (addr_12 == OCTAL(00006)) {
             result.type = INSTR_EXTEND;
             result.addr_mode = ADDR_NONE;

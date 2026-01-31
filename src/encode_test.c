@@ -72,9 +72,9 @@ int main(void) {
     // Extracode instructions
     printf("Extracode Instructions (require EXTEND prefix):\n");
     test_encode_decode(INSTR_MP, OCTAL(0234), "MP K 0234 (extracode)");
-    test_encode_decode(INSTR_CCS, OCTAL(04050), "CCS E 04050 (extracode)");
-    test_encode_decode(INSTR_TS, OCTAL(06050), "TS E 06050 (extracode)");
-    test_encode_decode(INSTR_XCH, OCTAL(06450), "XCH E 06450 (extracode)");
+    test_encode_decode(INSTR_CCS, OCTAL(050), "CCS E 050 (extracode)");
+    test_encode_decode(INSTR_TS, OCTAL(050), "TS E 050 (extracode)");
+    test_encode_decode(INSTR_XCH, OCTAL(050), "XCH E 050 (extracode)");
     test_encode_decode(INSTR_WAND, OCTAL(030), "WAND H 030 (extracode)");
     test_encode_decode(INSTR_WOR, OCTAL(030), "WOR H 030 (extracode)");
     test_encode_decode(INSTR_RXOR, OCTAL(030), "RXOR H 030 (extracode)");

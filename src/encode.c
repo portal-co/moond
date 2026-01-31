@@ -132,31 +132,17 @@ moond_encode_result moond_encode_instr(const moond_instr* instr) {
             break;
     }
     
-    // Encode based on opcode size
+    // Encode based on opcode size and quarter code
     if (entry->opcode_bits == 3) {
-        // 3-bit opcode: bits 1-3 = opcode, bits 4-15 = address
+        // 3-bit opcode: bits 1-3 = opcode, bits 4-15 = address (12 bits)
         result.word = (entry->opcode << 12) | (address & 0x0FFF);
+    } else if (entry->quarter_code == 0xff) {
+        // 6-bit whole code: bits 1-6 = opcode, bits 7-15 = address (9 bits)
+        result.word = (entry->opcode << 9) | (address & 0x01FF);
     } else {
-        // 6-bit opcode
-        if (entry->quarter_code == 0xff) {
-            // Whole code: bits 1-6 = opcode, bits 7-15 = address
-            result.word = (entry->opcode << 9) | (address & 0x01FF);
-        } else {
-            // Quarter code: bits 1-6 = opcode, bits 7-9 = quarter, bits 10-15 = remaining
-            // For quarter codes, the address field is smaller
-            result.word = (entry->opcode << 9) | (entry->quarter_code << 6) | (address & 0x3F);
-            
-            // Special handling for instructions with larger address fields in quarter codes
-            // Some quarter codes use the full remaining bits
-            if (entry->addr_bits >= 10) {
-                // Use bits 7-15 for address (after quarter code in bits 7-9)
-                // This means we actually encode: opcode(6) + address(9) where
-                // the quarter code is part of the encoding scheme
-                result.word = (entry->opcode << 9) | (entry->quarter_code << 6);
-                // The address for these fills the lower bits differently
-                // For now, just use the simpler encoding
-            }
-        }
+        // 6-bit quarter code: bits 1-6 = opcode, bits 7-9 = quarter, bits 10-15 = address remainder
+        // The address parameter contains the full value; we just take the low 6 bits
+        result.word = (entry->opcode << 9) | (entry->quarter_code << 6) | (address & 0x3F);
     }
     
     result.success = true;
