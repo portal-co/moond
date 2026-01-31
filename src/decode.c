@@ -432,11 +432,13 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     }
     
     if (opcode_6 == OCTAL(017)) {
-        // MP K - order code 17. (6-bit whole code)
+        // MP K - order code 17. (6-bit extracode, requires EXTEND)
+        // Uses 9-bit address field (bits 7-15), not 12-bit
         result.opcode = opcode_6;
         result.type = INSTR_MP;
         result.addr_mode = ADDR_K;
-        result.address = addr_12;
+        result.address = addr_9;  // 9-bit address, not 12-bit
+        result.requires_extend = true;  // MP requires EXTEND prefix
         return result;
     }
     

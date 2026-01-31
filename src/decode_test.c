@@ -50,10 +50,9 @@ int main(void) {
     test_decode("30050", false, "CA K 00050");
     test_decode("40123", false, "CS K 00123");
     test_decode("60100", false, "AD K 00100");
-    test_decode("74234", false, "MP K 04234");  // 17 (6-bit) 04234 (9-bit)
     test_decode("70777", false, "MSK K 00777");
-    test_decode("54345", false, "DCA K 04345");  // 13 (6-bit) 04345 (9-bit)
-    test_decode("64456", false, "DCS K 04456");  // 14 (6-bit) 04456 (9-bit)
+    test_decode("54345", false, "DCA K 04345");  // 13 (6-bit) + 04345 (9-bit)
+    test_decode("64456", false, "DCS K 04456");  // 14 (6-bit) + 04456 (9-bit)
     printf("\n");
     
     // Special instructions
@@ -71,6 +70,11 @@ int main(void) {
     test_decode("40130", false, "WRITE H 030");
     test_decode("40230", false, "RAND H 030");
     test_decode("40430", false, "ROR H 030");
+    printf("\n");
+    
+    // Extracode K-Type (MP requires EXTEND)
+    printf("Extracode K-Type Instructions:\n");
+    test_decode("17234", true, "MP K 0234 (extracode, 9-bit addr)");
     printf("\n");
     
     // Extracode instructions (require EXTEND)

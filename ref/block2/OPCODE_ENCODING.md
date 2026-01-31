@@ -1,9 +1,11 @@
 # Block-2 Opcode Encoding Overview
 
 > Created: 2026-01-31T01:22:00.000Z  
-> Updated: 2026-01-31T01:26:00.000Z (added extracode encoding details)
+> Updated: 2026-01-31T02:00:00.000Z (verified encoding with PDF, fixed address field sizes)
 >
-> Source: `agcis_32_blk2_instructions.pdf` — pages 10–24 (tables 32-2, 32-3), 163–170 (EXTEND and extracode instructions).
+> Source: `agcis_32_blk2_instructions.pdf` — pages 10–24 (tables 32-2, 32-3), 93–106 (NDX, AD, SU, MP), 163–170 (EXTEND and extracode instructions).
+>
+> **Verification Status**: Encoding verified against PDF for TC, CA, CS, AD, MP, EXTEND, GO, and extracode operation. Address field sizes confirmed for 3-bit, 6-bit whole codes, and quarter codes.
 
 ## Overview
 
@@ -80,19 +82,21 @@ For quarter codes `XX.YZZ`:
 
 ### Arithmetic and Logic Instructions
 
-| Mnemonic | Order Code | Type | Description |
-|----------|------------|------|-------------|
-| AD       | 06.        | K    | Add K |
-| SU       | 16.0       | E    | Subtract E |
-| MP       | 17.        | K    | Multiply by K |
-| DV       | 11.0       | E    | Divide by E |
-| ADS      | 02.6       | E    | Add to Storage E |
-| DAS      | 02.0       | E    | Double Add to Storage E |
-| INCR     | 02.4       | E    | Increment E |
-| AUG      | 12.4       | E    | Augment E |
-| DIM      | 12.6       | E    | Diminish E |
-| MSU      | 12.0       | E    | Modular Subtract E |
-| MSK      | 07.        | K    | Mask with K |
+| Mnemonic | Order Code | Type | Address Bits | Description | Requires EXTEND |
+|----------|------------|------|--------------|-------------|-----------------|
+| AD       | 06.        | K    | 12-bit (bits 4-15) | Add K | No |
+| SU       | 16.0       | E    | 10-bit (bits 7-15 minus quarter) | Subtract E | Yes |
+| MP       | 17.        | K    | 9-bit (bits 7-15) | Multiply by K | Yes |
+| DV       | 11.0       | E    | 10-bit (bits 7-15 minus quarter) | Divide by E | Yes |
+| ADS      | 02.6       | E    | 10-bit | Add to Storage E | Yes |
+| DAS      | 02.0       | E    | 10-bit | Double Add to Storage E | Yes |
+| INCR     | 02.4       | E    | 10-bit | Increment E | Yes |
+| AUG      | 12.4       | E    | 10-bit | Augment E | Yes |
+| DIM      | 12.6       | E    | 10-bit | Diminish E | Yes |
+| MSU      | 12.0       | E    | 10-bit | Modular Subtract E | Yes |
+| MSK      | 07.        | K    | 12-bit (bits 4-15) | Mask with K | No |
+
+**Note**: Instructions with 6-bit order codes (like MP 17.) have only 9 bits remaining for address, limiting range to 0-777 octal (0-511 decimal). This is sufficient for E-memory and CP registers but cannot address all of F-memory directly.
 
 ### Channel Instructions
 
