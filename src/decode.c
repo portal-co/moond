@@ -304,9 +304,12 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     // ========================================================================
     // SECTION 3: 3-bit Basic Instructions
     // Format: opcode (3 bits) + address (12 bits)
+    // 
+    // IMPORTANT: See ref/block2/MEMORY_MAP.md for address range constraints.
+    // Do NOT check status bits instead of validating address ranges here.
     // ========================================================================
-    
-    // Order code 00. - TC (and special fixed addresses)
+
+        // Order code 00. - TC (and special fixed addresses)
     if (opcode_3 == 00) {
         if (addr_12 == 00006) {
             result.type = INSTR_EXTEND;
@@ -368,6 +371,6 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.status++;
     }
     
-    // If we get here, instruction is unknown
+    // If we get here, instruction is unknown or matched
     return result;
 }
