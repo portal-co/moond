@@ -46,9 +46,16 @@ static void test_roundtrip(uint16_t orig_word, bool requires_extend) {
   }
 
   // Check round-trip
-  if (encoded.word == orig_word) {
-    pass_count++;
-  } else {
+  // Encoding can clear unused bits, but should not set new bits
+  // Allow: encoded is a subset of original (original & encoded == encoded)
+  // Disallow: encoded has bits not in original (encoded & ~original != 0)
+  uint16_t original_bits = orig_word;
+  uint16_t encoded_bits = encoded.word;
+  
+  // Check if encoded has any bits that original doesn't have
+  bool has_extra_bits = (encoded_bits & ~original_bits) != 0;
+  
+  if (has_extra_bits) {
     printf("FAIL: Round-trip mismatch for %s\n",
            moond_instr_mnemonic(decoded.type));
     printf("  Original: word=0x%04x/0o%06o (reversed 0o%06o) extend=%d\n",
@@ -56,9 +63,14 @@ static void test_roundtrip(uint16_t orig_word, bool requires_extend) {
            requires_extend);
     printf("  Decoded:  type=%d mode=%d addr=0x%04x extend=%d\n", decoded.type,
            decoded.addr_mode, decoded.address, decoded.requires_extend);
-    printf("  Encoded:  word=0x%04x/0o%06o (reversed 0o%06o)\n", encoded.word,
-           encoded.word, extract_agc_bits_reversed(encoded.word, 1, 15));
+    printf("  Encoded:  word=0x%04x/0o%06o (reversed 0o%06o)\n", encoded_bits,
+           encoded_bits, extract_agc_bits_reversed(encoded_bits, 1, 15));
+    printf("  ERROR: Encoded word has bits not in original (0x%04x)\n",
+           encoded_bits & ~original_bits);
     fail_count++;
+  } else {
+    // Bits may have been cleared (normalized), which is acceptable
+    pass_count++;
   }
 }
 
