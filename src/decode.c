@@ -1,4 +1,5 @@
 #include "decode.h"
+#include "core.h"
 #include <stddef.h>
 
 // Instruction mnemonic lookup table
@@ -131,23 +132,23 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     result.opcode = opcode_3;  // Store 3-bit opcode by default
     
     // Decode based on opcode and extend bit
-    // Order codes are in octal format (from OPCODE_ENCODING.md)
+    // Use OCTAL() macro for clarity on octal constants
     
     // Special fixed addresses (checked first)
-    if (opcode_3 == 0) {  // 00. (octal) - TC or special
-        if (addr_12 == 0006) {  // octal 00006
+    if (opcode_3 == OCTAL(00)) {
+        if (addr_12 == OCTAL(00006)) {
             result.type = INSTR_EXTEND;
             result.addr_mode = ADDR_NONE;
             return result;
-        } else if (addr_12 == 0004) {  // octal 00004
+        } else if (addr_12 == OCTAL(00004)) {
             result.type = INSTR_INHINT;
             result.addr_mode = ADDR_NONE;
             return result;
-        } else if (addr_12 == 0003) {  // octal 00003
+        } else if (addr_12 == OCTAL(00003)) {
             result.type = INSTR_RELINT;
             result.addr_mode = ADDR_NONE;
             return result;
-        } else if (addr_12 == 02000) {  // octal 04000
+        } else if (addr_12 == OCTAL(04000)) {
             result.type = INSTR_GO;
             result.addr_mode = ADDR_NONE;
             return result;
@@ -161,7 +162,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     }
     
     // Quarter codes - check 6-bit opcode
-    if (opcode_6 == 01) {  // 01.X (octal)
+    if (opcode_6 == OCTAL(01)) {
         result.quarter_code = quarter;
         result.opcode = opcode_6;
         if (quarter == 0 && extend_bit) {
@@ -180,7 +181,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    if (opcode_6 == 02) {  // 02.X (octal)
+    if (opcode_6 == OCTAL(02)) {
         result.quarter_code = quarter;
         result.opcode = opcode_6;
         if (quarter == 0 && extend_bit) {
@@ -214,7 +215,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    if (opcode_3 == 03) {  // 03. (octal)
+    if (opcode_3 == OCTAL(03)) {
         // CA K - order code 03.
         result.type = INSTR_CA;
         result.addr_mode = ADDR_K;
@@ -222,7 +223,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         return result;
     }
     
-    if (opcode_3 == 04) {  // 04. (octal)
+    if (opcode_3 == OCTAL(04)) {
         // CS K - order code 04.
         result.type = INSTR_CS;
         result.addr_mode = ADDR_K;
@@ -230,10 +231,10 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         return result;
     }
     
-    if (opcode_6 == 05) {  // 05.X (octal)
+    if (opcode_6 == OCTAL(05)) {
         result.quarter_code = quarter;
         result.opcode = opcode_6;
-        if (addr_12 == 0017) {  // octal 00017
+        if (addr_12 == OCTAL(00017)) {
             // RESUME - order code 05.0017
             result.type = INSTR_RESUME;
             result.addr_mode = ADDR_NONE;
@@ -269,7 +270,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    if (opcode_3 == 06) {  // 06. (octal)
+    if (opcode_3 == OCTAL(06)) {
         // AD K - order code 06.
         result.type = INSTR_AD;
         result.addr_mode = ADDR_K;
@@ -277,7 +278,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         return result;
     }
     
-    if (opcode_3 == 07) {  // 07. (octal)
+    if (opcode_3 == OCTAL(07)) {
         // MSK K - order code 07.
         result.type = INSTR_MSK;
         result.addr_mode = ADDR_K;
@@ -285,7 +286,8 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         return result;
     }
     
-    if (opcode_6 == 010) {  // 10.X (octal - channel instructions)
+    if (opcode_6 == OCTAL(010)) {
+        // 10.X - Channel instructions
         result.quarter_code = quarter;
         result.opcode = opcode_6;
         result.address = addr_9;
@@ -328,7 +330,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    if (opcode_6 == 011) {  // 11.X (octal)
+    if (opcode_6 == OCTAL(011)) {
         result.quarter_code = quarter;
         result.opcode = opcode_6;
         if (quarter == 0 && extend_bit) {
@@ -341,7 +343,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    if (opcode_6 == 012) {  // 12.X (octal)
+    if (opcode_6 == OCTAL(012)) {
         result.quarter_code = quarter;
         result.opcode = opcode_6;
         if (quarter == 0 && extend_bit) {
@@ -383,23 +385,25 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    if (opcode_3 == 013) {  // 13. (octal - note: this is 11 decimal, so 0xB, but in C octal is 013)
-        // DCA K - order code 13.
+    if (opcode_6 == OCTAL(013)) {
+        // DCA K - order code 13. (6-bit whole code)
+        result.opcode = opcode_6;
         result.type = INSTR_DCA;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         return result;
     }
     
-    if (opcode_3 == 014) {  // 14. (octal)
-        // DCS K - order code 14.
+    if (opcode_6 == OCTAL(014)) {
+        // DCS K - order code 14. (6-bit whole code)
+        result.opcode = opcode_6;
         result.type = INSTR_DCS;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         return result;
     }
     
-    if (opcode_6 == 015) {  // 15. (octal)
+    if (opcode_6 == OCTAL(015)) {
         // NDX K - order code 15.
         result.opcode = opcode_6;
         result.type = INSTR_NDX;
@@ -408,7 +412,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         return result;
     }
     
-    if (opcode_6 == 016) {  // 16.X (octal)
+    if (opcode_6 == OCTAL(016)) {
         result.quarter_code = quarter;
         result.opcode = opcode_6;
         if (quarter == 0 && extend_bit) {
@@ -427,8 +431,9 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    if (opcode_3 == 017) {  // 17. (octal)
-        // MP K - order code 17.
+    if (opcode_6 == OCTAL(017)) {
+        // MP K - order code 17. (6-bit whole code)
+        result.opcode = opcode_6;
         result.type = INSTR_MP;
         result.addr_mode = ADDR_K;
         result.address = addr_12;

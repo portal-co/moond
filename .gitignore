@@ -5,3 +5,4 @@ cc-copy
 node_modules
 out
 target
+build

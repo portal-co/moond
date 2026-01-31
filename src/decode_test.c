@@ -50,10 +50,10 @@ int main(void) {
     test_decode("30050", false, "CA K 00050");
     test_decode("40123", false, "CS K 00123");
     test_decode("60100", false, "AD K 00100");
-    test_decode("74234", false, "MP K 04234");
+    test_decode("74234", false, "MP K 04234");  // 17 (6-bit) 04234 (9-bit)
     test_decode("70777", false, "MSK K 00777");
-    test_decode("54345", false, "DCA K 04345");
-    test_decode("64456", false, "DCS K 04456");
+    test_decode("54345", false, "DCA K 04345");  // 13 (6-bit) 04345 (9-bit)
+    test_decode("64456", false, "DCS K 04456");  // 14 (6-bit) 04456 (9-bit)
     printf("\n");
     
     // Special instructions
@@ -102,7 +102,7 @@ int main(void) {
     printf("NDX Instruction (context-dependent):\n");
     test_decode("24100", false, "NDX K 04100 (basic)");
     test_decode("24100", true, "NDX E 04100 (extracode)");
-    test_decode("64100", false, "NDX K 04100 (always K-type)");
+    test_decode("64100", false, "NDX K 04100 (K-type with 15. opcode)");
     printf("\n");
     
     // TCF with different quarter codes
