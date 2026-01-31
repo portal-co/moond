@@ -144,6 +144,80 @@ static bool test_make_bits(void) {
     return true;
 }
 
+static bool test_bit_reversal(void) {
+    printf("\nTesting bit reversal...\n");
+    
+    // Reverse 0b000001 (6 bits) should give 0b100000 (32 decimal)
+    uint16_t rev = reverse_bits(0b000001, 6);
+    if (rev != 0b100000) {
+        printf("  FAIL: reverse_bits(0b000001, 6) = 0b%06b (expected 0b100000)\n", rev);
+        return false;
+    }
+    
+    // Reverse 0b101 (3 bits) should give 0b101 (palindrome)
+    rev = reverse_bits(0b101, 3);
+    if (rev != 0b101) {
+        printf("  FAIL: reverse_bits(0b101, 3) = 0b%03b (expected 0b101)\n", rev);
+        return false;
+    }
+    
+    // Reverse 0b001 (3 bits) should give 0b100
+    rev = reverse_bits(0b001, 3);
+    if (rev != 0b100) {
+        printf("  FAIL: reverse_bits(0b001, 3) = 0b%03b (expected 0b100)\n", rev);
+        return false;
+    }
+    
+    // Reverse 01 octal = 1 decimal = 0b000001 (6 bits) -> 0b100000 = 040 octal = 32 decimal
+    rev = reverse_bits(OCTAL(01), 6);
+    if (rev != OCTAL(040)) {
+        printf("  FAIL: reverse_bits(01 octal, 6) = %03o octal (expected 040 octal)\n", rev);
+        return false;
+    }
+    
+    printf("  ✓ Bit reversal works\n");
+    return true;
+}
+
+static bool test_agc_semantic_operations(void) {
+    printf("\nTesting AGC-semantic operations (with reversal)...\n");
+    
+    // Test AGC-semantic extraction:
+    // If AGC documentation says order code "01" octal is in bits 1-6:
+    // "01" octal = 1 decimal = 0b000001
+    // In AGC bits, this means: bit 1 (MSB of field) = 0, bit 6 (LSB of field) = 1
+    // So the bits must be stored REVERSED in the C representation
+    // In C: bits 14-9, with bit 14 = 0 (AGC bit 1) and bit 9 = 1 (AGC bit 6)
+    // That's 0b100000 in C bits 14-9
+    uint16_t word = ((uint16_t)0b100000) << 9;  // Put reversed value in C bits 14-9
+    uint16_t extracted = extract_agc_bits_reversed(word, 1, 6);
+    if (extracted != OCTAL(01)) {
+        printf("  FAIL: extract_agc_bits_reversed gave %02o (expected 01 octal)\n", extracted);
+        printf("        word = %05o, C bits 14-9 = 0b%06b\n", word, (word >> 9) & 0x3F);
+        return false;
+    }
+    
+    // Test AGC-semantic insertion:
+    // Insert opcode "01" octal into AGC bits 1-6
+    // Should reverse it to 0b100000 and place in C bits 14-9
+    word = insert_agc_bits_reversed(0, OCTAL(01), 1, 6);
+    uint16_t c_bits = (word >> 9) & 0x3F;
+    if (c_bits != 0b100000) {
+        printf("  FAIL: insert_agc_bits_reversed gave C bits = 0b%06b (expected 0b100000)\n", c_bits);
+        return false;
+    }
+    
+    // Verify round-trip: extract what we inserted
+    extracted = extract_agc_bits_reversed(word, 1, 6);
+    if (extracted != OCTAL(01)) {
+        printf("  FAIL: round-trip failed: inserted 01, extracted %02o\n", extracted);
+        return false;
+    }
+    
+    printf("  ✓ AGC-semantic operations work\n");
+    return true;
+}
+
 int main(void) {
     printf("AGC Bit Manipulation Helper Test\n");
     printf("=================================\n\n");
@@ -153,6 +227,8 @@ int main(void) {
     all_pass &= test_extract_bits();
     all_pass &= test_insert_bits();
     all_pass &= test_make_bits();
+    all_pass &= test_bit_reversal();
+    all_pass &= test_agc_semantic_operations();
     
     printf("\n");
     if (all_pass) {

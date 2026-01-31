@@ -21,6 +21,23 @@
 //   AGC bit 6 -> C bit 9
 //   AGC bit 7 -> C bit 8
 //   AGC bit 15 -> C bit 0
+//
+// CRITICAL: Bit Reversal IS Needed!
+// -----------------------------------
+// AGC numbers bits BACKWARDS from C:
+//   - AGC bit 1 = MSB (most significant)
+//   - AGC bit 15 = LSB (least significant)
+//
+// When the AGC documentation says order code "01" octal is in bits 1-6:
+//   - "01" octal = 1 decimal = 0b000001 in normal binary notation
+//   - AGC bit 1 (MSB of field) should contain the MSB of value = 0
+//   - AGC bit 6 (LSB of field) should contain the LSB of value = 1
+//   - In C representation: bit 14 = 0, bit 9 = 1
+//   - So C bits 14-9 should be: 0b100000 (reversed!)
+//   
+// When we mask out bits from C representation, they're in C order (LSB=bit 0).
+// But AGC documentation specifies values assuming bit 1 is MSB.
+// Therefore: we must reverse multi-bit fields after extraction or before insertion.
 
 // Convert AGC bit number to C bit number (for 15-bit words)
 // agc_bit: 1-15 (AGC numbering)
@@ -83,4 +100,32 @@ static inline uint16_t insert_agc_bits(uint16_t word, uint16_t value, uint8_t st
 // Example: make_agc_bits(0x01, 1, 6) creates word with 0x01 in bits 1-6
 static inline uint16_t make_agc_bits(uint16_t value, uint8_t start_bit, uint8_t end_bit) {
     return insert_agc_bits(0, value, start_bit, end_bit);
+}
+
+// Reverse bits in an N-bit value
+// Used when extracting/inserting multi-bit fields from AGC words
+// because AGC numbers bits backwards (bit 1 = MSB, bit 15 = LSB)
+static inline uint16_t reverse_bits(uint16_t value, uint8_t num_bits) {
+    uint16_t result = 0;
+    for (uint8_t i = 0; i < num_bits; i++) {
+        result = (result << 1) | (value & 1);
+        value >>= 1;
+    }
+    return result;
+}
+
+// Extract value from AGC bit range (WITH bit reversal for AGC semantics)
+// Use this when you need the value as AGC documentation specifies it
+static inline uint16_t extract_agc_bits_reversed(uint16_t word, uint8_t start_bit, uint8_t end_bit) {
+    uint8_t num_bits = end_bit - start_bit + 1;
+    uint16_t value = extract_agc_bits(word, start_bit, end_bit);
+    return reverse_bits(value, num_bits);
+}
+
+// Insert value into AGC bit range (WITH bit reversal for AGC semantics)
+// Use this when you have a value as AGC documentation specifies it
+static inline uint16_t insert_agc_bits_reversed(uint16_t word, uint16_t value, uint8_t start_bit, uint8_t end_bit) {
+    uint8_t num_bits = end_bit - start_bit + 1;
+    uint16_t reversed_value = reverse_bits(value, num_bits);
+    return insert_agc_bits(word, reversed_value, start_bit, end_bit);
 }

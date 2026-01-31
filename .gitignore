@@ -10,3 +10,4 @@ build
 /encode_test
 /bits_test
 decode_test
+encoding_verification_test
