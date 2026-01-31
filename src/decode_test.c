@@ -3,8 +3,8 @@
 
 #include "decode.h"
 #include "encode.h"
-#include <cstdint>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 
 static int test_count = 0;
@@ -12,19 +12,20 @@ static int pass_count = 0;
 static int fail_count = 0;
 
 // Test encode-decode round-trip for an instruction
-static void test_roundtrip(uint16_t orig, bool requires_extend) {
+static void test_roundtrip(uint16_t orig_word, bool requires_extend) {
   test_count++;
 
   // Decode
-  moond_decoded_instr decoded = moond_decode_instr(orig, requires_extend);
+  moond_instr decoded = moond_decode_instr(orig_word, requires_extend);
 
   // Check decoder status (should be 0 for exactly one match)
   if (decoded.status != 0) {
     if (decoded.status + 1 == 0) {
-      printf("WARN: invalid decode=%u", decoded.status);
+      // No match, skip silently
       return;
     } else {
-      printf("FAIL: Decoder status=%u (expected 0)\n", decoded.status);
+      printf("FAIL: Decoder status=%d (expected 0) for word=0x%04x extend=%d\n",
+             decoded.status, orig_word, requires_extend);
       fail_count++;
       return;
     }
@@ -33,28 +34,24 @@ static void test_roundtrip(uint16_t orig, bool requires_extend) {
   // Encode
   moond_encode_result encoded = moond_encode_instr(&decoded);
 
-  if (encoded.status != 0) {
-    printf("FAIL: Encode failed for %s (status=%u)\n",
-           moond_instr_mnemonic(orig.type), encoded.status);
+  if (!encoded.success) {
+    printf("FAIL: Encode failed for %s: %s\n",
+           moond_instr_mnemonic(decoded.type),
+           encoded.error ? encoded.error : "unknown error");
     fail_count++;
     return;
   }
 
   // Check round-trip
-  bool matches =
-      (decoded.type == encoded.type && decoded.addr_mode == encoded.addr_mode &&
-       decoded.address == encoded.address &&
-       decoded.requires_extend == encoded.requires_extend);
-
-  if (matches) {
+  if (encoded.word == orig_word) {
     pass_count++;
   } else {
     printf("FAIL: Round-trip mismatch for %s\n",
-           moond_instr_mnemonic(orig.type));
-    printf("  Original: type=%d mode=%d addr=0x%04x extend=%d\n", orig.type,
-           orig.addr_mode, orig.address, orig.requires_extend);
+           moond_instr_mnemonic(decoded.type));
+    printf("  Original: word=0x%04x extend=%d\n", orig_word, requires_extend);
     printf("  Decoded:  type=%d mode=%d addr=0x%04x extend=%d\n", decoded.type,
            decoded.addr_mode, decoded.address, decoded.requires_extend);
+    printf("  Encoded:  word=0x%04x\n", encoded.word);
     fail_count++;
   }
 }
@@ -62,10 +59,10 @@ static void test_roundtrip(uint16_t orig, bool requires_extend) {
 int main(void) {
   printf("AGC Block-2 Encoder/Decoder Test\n");
   printf("=================================\n\n");
-  for (uint16_t i = 0; i <= 0xffff; i++) {
+  for (uint32_t i = 0; i <= 0xffff; i++) {
     // Test all possible 16-bit instruction words
-    test_roundtrip(i, false);
-    test_roundtrip(i, true);
+    test_roundtrip((uint16_t)i, false);
+    test_roundtrip((uint16_t)i, true);
   }
 
   printf("\n=================================\n");
