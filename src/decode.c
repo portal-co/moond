@@ -229,9 +229,9 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
                 result.status++;
             }
         }
-        // Also handles BZMF F and other non-extracode variants
-        if (quarter == 2 || quarter == 4 || quarter == 6) {
-            // BZMF F - 012.2, 012.4, 012.6
+        // BZMF F (basic, non-extracode) - 012.2, 012.4, 012.6
+        // Note: When EXTEND is set, quarters 2/4/6 are QXCH/AUG/DIM, not BZMF
+        if (!extend_bit && (quarter == 2 || quarter == 4 || quarter == 6)) {
             result.type = INSTR_BZMF;
             result.addr_mode = ADDR_F;
             result.address = addr_6;

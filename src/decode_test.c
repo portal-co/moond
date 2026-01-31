@@ -24,8 +24,11 @@ static void test_roundtrip(uint16_t orig_word, bool requires_extend) {
       // No match, skip silently
       return;
     } else {
-      printf("FAIL: Decoder status=%d (expected 0) for word=0x%04x extend=%d\n",
-             decoded.status, orig_word, requires_extend);
+      printf("FAIL: Decoder status=%d (expected 0) for word=0x%04x/0o%06o "
+             "(reversed "
+             "0o%06o) extend=%d\n",
+             decoded.status, orig_word, orig_word,
+             extract_agc_bits_reversed(orig_word, 1, 15), requires_extend);
       fail_count++;
       return;
     }
@@ -48,10 +51,13 @@ static void test_roundtrip(uint16_t orig_word, bool requires_extend) {
   } else {
     printf("FAIL: Round-trip mismatch for %s\n",
            moond_instr_mnemonic(decoded.type));
-    printf("  Original: word=0x%04x extend=%d\n", orig_word, requires_extend);
+    printf("  Original: word=0x%04x/0o%06o (reversed 0o%06o) extend=%d\n",
+           orig_word, orig_word, extract_agc_bits_reversed(orig_word, 1, 15),
+           requires_extend);
     printf("  Decoded:  type=%d mode=%d addr=0x%04x extend=%d\n", decoded.type,
            decoded.addr_mode, decoded.address, decoded.requires_extend);
-    printf("  Encoded:  word=0x%04x\n", encoded.word);
+    printf("  Encoded:  word=0x%04x/0o%06o (reversed 0o%06o)\n", encoded.word,
+           encoded.word, extract_agc_bits_reversed(encoded.word, 1, 15));
     fail_count++;
   }
 }
@@ -60,6 +66,7 @@ int main(void) {
   printf("AGC Block-2 Encoder/Decoder Test\n");
   printf("=================================\n\n");
   for (uint32_t i = 0; i <= 0xffff; i++) {
+    printf("INFO: trying %04x\n", (uint16_t)i);
     // Test all possible 16-bit instruction words
     test_roundtrip((uint16_t)i, false);
     test_roundtrip((uint16_t)i, true);
