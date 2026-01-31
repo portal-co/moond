@@ -104,6 +104,8 @@ typedef struct {
     bool is_extracode;         // True if decoded with extend_bit set
     uint8_t opcode;            // Raw opcode bits (bits 1-3 or 1-6)
     uint8_t quarter_code;      // Quarter code (bits 7-9) if applicable, 0xff otherwise
+    int8_t status;             // Number of valid instructions recognized minus one (two's complement)
+                               // -1 (0xFF) = no match, 0 = one match, 1 = two matches, etc.
 } moond_instr;
 
 // Encoding result

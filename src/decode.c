@@ -10,7 +10,8 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         .requires_extend = false,
         .is_extracode = extend_bit,
         .opcode = 0,
-        .quarter_code = 0xFF
+        .quarter_code = 0xFF,
+        .status = -1
     };
     
     // Extract all possible opcode and address fields
@@ -38,13 +39,13 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.addr_mode = ADDR_E;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         } else if (quarter == 2 || quarter == 4 || quarter == 6) {
             // TCF F - 01.2, 01.4, 01.6
             result.type = INSTR_TCF;
             result.addr_mode = ADDR_F;
             result.address = addr_6;
-            return result;
+            result.status++;
         }
     }
     
@@ -59,28 +60,28 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             } else if (quarter == 2) {
                 // LXCH E - 02.2 (extracode)
                 result.type = INSTR_LXCH;
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             } else if (quarter == 4) {
                 // INCR E - 02.4 (extracode)
                 result.type = INSTR_INCR;
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             } else if (quarter == 6) {
                 // ADS E - 02.6 (extracode)
                 result.type = INSTR_ADS;
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             }
         }
     }
@@ -96,12 +97,12 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             } else if (addr_6 == 017) {
                 // RESUME - 05.0017 (special)
                 result.type = INSTR_RESUME;
                 result.addr_mode = ADDR_NONE;
-                return result;
+                result.status++;
             }
         } else if (quarter == 2 && extend_bit) {
             // DXCH E - 05.2 (extracode)
@@ -109,21 +110,21 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.addr_mode = ADDR_E;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         } else if (quarter == 4 && extend_bit) {
             // TS E - 05.4 (extracode)
             result.type = INSTR_TS;
             result.addr_mode = ADDR_E;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         } else if (quarter == 5 && extend_bit) {
             // XCH E - 05.5 (extracode)
             result.type = INSTR_XCH;
             result.addr_mode = ADDR_E;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         }
     }
     
@@ -136,46 +137,46 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.type = INSTR_READ;
             result.addr_mode = ADDR_H;
             result.address = addr_6;
-            return result;
+            result.status++;
         } else if (quarter == 1) {
             // WRITE H - 010.1
             result.type = INSTR_WRITE;
             result.addr_mode = ADDR_H;
             result.address = addr_6;
-            return result;
+            result.status++;
         } else if (quarter == 2) {
             // RAND H - 010.2
             result.type = INSTR_RAND;
             result.addr_mode = ADDR_H;
             result.address = addr_6;
-            return result;
+            result.status++;
         } else if (quarter == 3 && extend_bit) {
             // WAND H - 010.3 (extracode)
             result.type = INSTR_WAND;
             result.addr_mode = ADDR_H;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         } else if (quarter == 4) {
             // ROR H - 010.4
             result.type = INSTR_ROR;
             result.addr_mode = ADDR_H;
             result.address = addr_6;
-            return result;
+            result.status++;
         } else if (quarter == 5 && extend_bit) {
             // WOR H - 010.5 (extracode)
             result.type = INSTR_WOR;
             result.addr_mode = ADDR_H;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         } else if (quarter == 6 && extend_bit) {
             // RXOR H - 010.6 (extracode)
             result.type = INSTR_RXOR;
             result.addr_mode = ADDR_H;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         }
     }
     
@@ -189,7 +190,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.addr_mode = ADDR_E;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         }
     }
     
@@ -204,28 +205,28 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             } else if (quarter == 2) {
                 // QXCH E - 012.2 (extracode)
                 result.type = INSTR_QXCH;
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             } else if (quarter == 4) {
                 // AUG E - 012.4 (extracode)
                 result.type = INSTR_AUG;
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             } else if (quarter == 6) {
                 // DIM E - 012.6 (extracode)
                 result.type = INSTR_DIM;
                 result.addr_mode = ADDR_E;
                 result.address = addr_6;
                 result.requires_extend = true;
-                return result;
+                result.status++;
             }
         }
         // Also handles BZMF F and other non-extracode variants
@@ -234,7 +235,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.type = INSTR_BZMF;
             result.addr_mode = ADDR_F;
             result.address = addr_6;
-            return result;
+            result.status++;
         }
     }
     
@@ -249,7 +250,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.type = INSTR_DCA;
         result.addr_mode = ADDR_K;
         result.address = addr_9;
-        return result;
+        result.status++;
     }
     
     // Order code 014 - DCS
@@ -258,7 +259,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.type = INSTR_DCS;
         result.addr_mode = ADDR_K;
         result.address = addr_9;
-        return result;
+        result.status++;
     }
     
     // Order code 015 - NDX (basic, non-extracode)
@@ -267,7 +268,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.type = INSTR_NDX;
         result.addr_mode = ADDR_K;
         result.address = addr_9;
-        return result;
+        result.status++;
     }
     
     // Order code 016.x
@@ -280,13 +281,13 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.addr_mode = ADDR_E;
             result.address = addr_6;
             result.requires_extend = true;
-            return result;
+            result.status++;
         } else if (quarter == 2 || quarter == 4 || quarter == 6) {
             // BZF F - 016.2, 016.4, 016.6
             result.type = INSTR_BZF;
             result.addr_mode = ADDR_F;
             result.address = addr_6;
-            return result;
+            result.status++;
         }
     }
     
@@ -297,7 +298,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.addr_mode = ADDR_K;
         result.address = addr_9;
         result.requires_extend = true;
-        return result;
+        result.status++;
     }
     
     // ========================================================================
@@ -310,25 +311,25 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         if (addr_12 == 00006) {
             result.type = INSTR_EXTEND;
             result.addr_mode = ADDR_NONE;
-            return result;
+            result.status++;
         } else if (addr_12 == 00004) {
             result.type = INSTR_INHINT;
             result.addr_mode = ADDR_NONE;
-            return result;
+            result.status++;
         } else if (addr_12 == 00003) {
             result.type = INSTR_RELINT;
             result.addr_mode = ADDR_NONE;
-            return result;
+            result.status++;
         } else if (addr_12 == 04000) {
             result.type = INSTR_GO;
             result.addr_mode = ADDR_NONE;
-            return result;
+            result.status++;
         } else {
             // TC K - order code 00.
             result.type = INSTR_TC;
             result.addr_mode = ADDR_K;
             result.address = addr_12;
-            return result;
+            result.status++;
         }
     }
     
@@ -337,7 +338,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.type = INSTR_CA;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
-        return result;
+        result.status++;
     }
     
     // Order code 04. - CS
@@ -345,7 +346,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.type = INSTR_CS;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
-        return result;
+        result.status++;
     }
     
     // Order code 06. - AD
@@ -353,7 +354,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.type = INSTR_AD;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
-        return result;
+        result.status++;
     }
     
     // Order code 07. - MSK
@@ -361,7 +362,7 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         result.type = INSTR_MSK;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
-        return result;
+        result.status++;
     }
     
     // If we get here, instruction is unknown
