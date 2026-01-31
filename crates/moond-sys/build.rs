@@ -11,7 +11,7 @@ fn main() -> std::io::Result<()> {
         Ok(a) => {
             if !a.success() {
                 eprintln!("sync failed: {a}")
-            }else{
+            } else {
                 println!("cargo::rerun-if-changed={m}/../..")
             }
         }
@@ -30,6 +30,7 @@ fn main() -> std::io::Result<()> {
     }
     b.layout_tests(false)
         .derive_default(true)
+        .use_core()
         .clang_args(includes.iter().flat_map(|path| ["-I", &path]))
         .generate()
         .unwrap()
