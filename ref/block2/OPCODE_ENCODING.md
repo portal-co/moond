@@ -15,14 +15,28 @@ This document describes the instruction encoding format for AGC Block-2 machine 
 
 ## Instruction Word Format
 
-```
-Bit:  0  | 1 2 3 | 4 5 6 | 7 8 9 | 10 11 12 | 13 14 15
-      P  | Opcode|      Address/Operand Field         |
-```
+**All AGC Block-2 instructions use a 6-bit opcode field (bits 1-6).** There are two instruction formats:
 
-- **Bit 0**: Parity bit (not shown in octal representation)
-- **Bits 1-3**: Primary opcode (octal digit)
-- **Bits 4-15**: Address or operand field (4 octal digits)
+### Format 1: Whole Code Instructions (6-bit opcode, no quarter)
+```
+Bit:  0  | 1 2 3 4 5 6 | 7 8 9 10 11 12 13 14 15
+      P  |   Opcode6   |     9-bit Address        |
+```
+- Examples: TC (00.), CA (03.), CS (04.), AD (06.), DCA (013.), MP (017.)
+- **Bits 1-6**: 6-bit opcode (00-77 octal, displayed as "00." through "77.")
+- **Bits 7-15**: 9-bit address (000-777 octal)
+- The trailing "." in notation (e.g., "00.", "03.", "13.") indicates whole code format
+
+### Format 2: Quarter Code Instructions (6-bit opcode + 3-bit quarter)
+```
+Bit:  0  | 1 2 3 4 5 6 | 7 8 9 | 10 11 12 13 14 15
+      P  |   Opcode6   | Qtr   |    6-bit Addr     |
+```
+- Examples: READ (10.0), WRITE (10.1), CCS (01.0), TCF (01.2), TS (05.4)
+- **Bits 1-6**: 6-bit opcode (01-77 octal)
+- **Bits 7-9**: 3-bit quarter code (0-7 octal)
+- **Bits 10-15**: 6-bit address (00-77 octal)
+- The ".Y" suffix in notation indicates quarter code format
 
 ### AGC Bit Ordering and Value Extraction
 
@@ -58,19 +72,22 @@ Block-2 instructions are categorized by their address mode and operation type:
 - **C-type**: Counter/peripheral address
 - **H-type**: I/O channel address
 
-### Order Code Format
+### Order Code Notation
 
-Instructions use either:
-- **Whole order codes**: 3 octal digits (bits 1-9), e.g., `00.`, `01.`, `06.`
-- **Quarter order codes**: 4 octal digits (bits 1-12), e.g., `05.0`, `05.4`, `02.2`
+All instructions use a 6-bit opcode field (bits 1-6). Order code notation indicates the instruction format:
 
-The format `XX.Y` represents:
-- `XX` = Primary opcode (bits 1-6, 2 octal digits)
-- `Y` = Sub-opcode (bits 7-9, 1 octal digit)
+**Whole code notation:** `XX.` (two octal digits followed by period)
+- Examples: `TC 00.`, `CA 03.`, `AD 06.`, `DCA 13.`, `MP 17.`
+- Opcode: Bits 1-6 contain the value XX (00-77 octal)
+- Address: Bits 7-15 (9 bits, 000-777 octal)
+- Even single-digit opcodes like "00." and "03." occupy the full 6-bit opcode field
 
-For quarter codes `XX.YZZ`:
-- `XX.Y` = Primary + sub-opcode (bits 1-9, 3 octal digits)
-- `ZZ` = Further qualification (bits 10-12, 2 octal digits)
+**Quarter code notation:** `XX.Y` (two octal digits, period, one octal digit)
+- Examples: `TCF 01.2`, `CCS 01.0`, `READ 10.0`, `TS 05.4`
+- Opcode: Bits 1-6 contain XX (01-77 octal)
+- Quarter: Bits 7-9 contain Y (0-7 octal)
+- Address: Bits 10-15 (6 bits, 00-77 octal)
+- The quarter field allows multiple instructions to share the same 6-bit opcode
 
 ## Regular Instructions
 
@@ -120,7 +137,10 @@ For quarter codes `XX.YZZ`:
 | MSU      | 12.0       | E    | 10-bit | Modular Subtract E | Yes |
 | MSK      | 07.        | K    | 12-bit (bits 4-15) | Mask with K | No |
 
-**Note**: Instructions with 6-bit order codes (like MP 17.) have only 9 bits remaining for address, limiting range to 0-777 octal (0-511 decimal). This is sufficient for E-memory and CP registers but cannot address all of F-memory directly.
+**Address Range Constraints:**
+- **Whole code instructions** have 9-bit address fields (bits 7-15), allowing addresses 000-777 octal (0-511 decimal). This is sufficient for E-memory and CP registers but cannot directly address all of F-memory.
+- **Quarter code instructions** have 6-bit address fields (bits 10-15), allowing addresses 00-77 octal (0-63 decimal), limiting them to CP registers and low E-memory.
+- Instructions with whole code format can access more memory than quarter codes due to the larger address field.
 
 ### Channel Instructions
 

@@ -14,19 +14,17 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         .status = -1
     };
     
-    // Extract all possible opcode and address fields
-    uint8_t opcode_3 = moond_extract_opcode_3(word);
+    // ALL AGC instructions use 6-bit opcodes (bits 1-6)
     uint8_t opcode_6 = moond_extract_opcode_6(word);
     uint8_t quarter = moond_extract_quarter(word);
-    uint16_t addr_12 = moond_extract_addr_12(word);
     uint16_t addr_9 = moond_extract_addr_9(word);
     uint16_t addr_6 = moond_extract_addr_6(word);
     
-    result.opcode = opcode_3;  // Default to 3-bit opcode
+    result.opcode = opcode_6;
     
     // ========================================================================
-    // SECTION 1: 6-bit Quarter Code Instructions (check FIRST)
-    // Format: opcode (6 bits) + quarter (3 bits) + address (6 bits)
+    // SECTION 1: Quarter Code Instructions (6-bit opcode + 3-bit quarter + 6-bit address)
+    // Format: opcode (bits 1-6) + quarter (bits 7-9) + address (bits 10-15)
     // ========================================================================
     
     // Order code 01.x
@@ -239,135 +237,68 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    // ========================================================================
-    // SECTION 2: 6-bit Whole Code Instructions (no quarter code)
-    // Format: opcode (6 bits) + address (9 bits)
-    // ========================================================================
-    
-    // Order code 013 - DCA
-    if (opcode_6 == 013) {
-        result.opcode = opcode_6;
-        result.type = INSTR_DCA;
-        result.addr_mode = ADDR_K;
-        result.address = addr_9;
-        result.status++;
-    }
-    
-    // Order code 014 - DCS
-    if (opcode_6 == 014) {
-        result.opcode = opcode_6;
-        result.type = INSTR_DCS;
-        result.addr_mode = ADDR_K;
-        result.address = addr_9;
-        result.status++;
-    }
-    
-    // Order code 015 - NDX (basic, non-extracode)
-    if (opcode_6 == 015) {
-        result.opcode = opcode_6;
-        result.type = INSTR_NDX;
-        result.addr_mode = ADDR_K;
-        result.address = addr_9;
-        result.status++;
-    }
-    
-    // Order code 016.x
-    if (opcode_6 == 016) {
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        if (quarter == 0 && extend_bit) {
-            // SU E - 016.0 (extracode)
-            result.type = INSTR_SU;
-            result.addr_mode = ADDR_E;
-            result.address = addr_6;
-            result.requires_extend = true;
-            result.status++;
-        } else if (quarter == 2 || quarter == 4 || quarter == 6) {
-            // BZF F - 016.2, 016.4, 016.6
-            result.type = INSTR_BZF;
-            result.addr_mode = ADDR_F;
-            result.address = addr_6;
-            result.status++;
-        }
-    }
-    
-    // Order code 017 - MP (extracode)
-    if (opcode_6 == 017) {
-        result.opcode = opcode_6;
-        result.type = INSTR_MP;
-        result.addr_mode = ADDR_K;
-        result.address = addr_9;
-        result.requires_extend = true;
-        result.status++;
-    }
     
     // ========================================================================
-    // SECTION 3: 3-bit Basic Instructions
-    // Format: opcode (3 bits) + address (12 bits)
-    // 
-    // IMPORTANT: See ref/block2/MEMORY_MAP.md for address range constraints.
-    // Do NOT check status bits instead of validating address ranges here.
+    // SECTION 2: Whole Code Instructions (6-bit opcode + 9-bit address)
+    // Format: opcode (bits 1-6) + address (bits 7-15)
+    // These have NO quarter field
     // ========================================================================
-
-        // Order code 00. - TC (and special fixed addresses)
-    if (opcode_3 == 00) {
-        if (addr_12 == 00006) {
+    
+    // Order code 00. - TC and special fixed addresses
+    if (opcode_6 == 00) {
+        // TC uses 9-bit address field
+        if (addr_9 == 00006) {
             result.type = INSTR_EXTEND;
             result.addr_mode = ADDR_NONE;
             result.status++;
-        } else if (addr_12 == 00004) {
+        } else if (addr_9 == 00004) {
             result.type = INSTR_INHINT;
             result.addr_mode = ADDR_NONE;
             result.status++;
-        } else if (addr_12 == 00003) {
+        } else if (addr_9 == 00003) {
             result.type = INSTR_RELINT;
             result.addr_mode = ADDR_NONE;
             result.status++;
-        } else if (addr_12 == 04000) {
-            result.type = INSTR_GO;
-            result.addr_mode = ADDR_NONE;
-            result.status++;
-        } else if (addr_12 >= 04000) {
-            // TC K - order code 00. (only valid for fixed memory >= 04000)
-            // See ref/block2/MEMORY_MAP.md: TC to registers/erasable is invalid
+        } else if (addr_9 >= 0400) {
+            // TC K - order code 00. (9-bit address >= 0400 for fixed memory)
+            // See ref/block2/MEMORY_MAP.md: TC to low addresses is invalid
             result.type = INSTR_TC;
             result.addr_mode = ADDR_K;
-            result.address = addr_12;
+            result.address = addr_9;
             result.status++;
         }
-        // Addresses < 04000 (registers and erasable) are not valid for TC
-        // and will remain INSTR_UNKNOWN unless matched by 6-bit opcodes
+        // Addresses < 0400 (registers and low erasable) are not valid for TC
     }
     
     // Order code 03. - CA
-    if (opcode_3 == 03) {
+    if (opcode_6 == 03) {
         result.type = INSTR_CA;
         result.addr_mode = ADDR_K;
-        result.address = addr_12;
+        result.address = addr_9;
         result.status++;
     }
     
     // Order code 04. - CS
-    if (opcode_3 == 04) {
+    if (opcode_6 == 04) {
         result.type = INSTR_CS;
         result.addr_mode = ADDR_K;
-        result.address = addr_12;
+        result.address = addr_9;
         result.status++;
     }
     
     // Order code 06. - AD
-    if (opcode_3 == 06) {
+    if (opcode_6 == 06) {
         result.type = INSTR_AD;
         result.addr_mode = ADDR_K;
-        result.address = addr_12;
+        result.address = addr_9;
         result.status++;
     }
     
     // Order code 07. - MSK
-    if (opcode_3 == 07) {
+    if (opcode_6 == 07) {
         result.type = INSTR_MSK;
         result.addr_mode = ADDR_K;
-        result.address = addr_12;
+        result.address = addr_9;
         result.status++;
     }
     
