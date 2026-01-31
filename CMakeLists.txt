@@ -21,3 +21,8 @@ set_property(TARGET decode_test PROPERTY C_STANDARD 23)
 add_executable(encode_test src/encode_test.c)
 target_link_libraries(encode_test moond-core)
 set_property(TARGET encode_test PROPERTY C_STANDARD 23)
+
+# Bit manipulation helper test
+add_executable(bits_test src/bits_test.c)
+target_link_libraries(bits_test moond-core)
+set_property(TARGET bits_test PROPERTY C_STANDARD 23)

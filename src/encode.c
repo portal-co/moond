@@ -1,4 +1,5 @@
 #include "encode.h"
+#include "bits.h"
 #include "core.h"
 #include <stddef.h>
 
@@ -134,15 +135,16 @@ moond_encode_result moond_encode_instr(const moond_instr* instr) {
     
     // Encode based on opcode size and quarter code
     if (entry->opcode_bits == 3) {
-        // 3-bit opcode: bits 1-3 = opcode, bits 4-15 = address (12 bits)
-        result.word = (entry->opcode << 12) | (address & 0x0FFF);
+        // 3-bit opcode: AGC bits 1-3 = opcode, bits 4-15 = address (12 bits)
+        result.word = make_agc_bits(entry->opcode, 1, 3) | make_agc_bits(address & 0x0FFF, 4, 15);
     } else if (entry->quarter_code == 0xff) {
-        // 6-bit whole code: bits 1-6 = opcode, bits 7-15 = address (9 bits)
-        result.word = (entry->opcode << 9) | (address & 0x01FF);
+        // 6-bit whole code: AGC bits 1-6 = opcode, bits 7-15 = address (9 bits)
+        result.word = make_agc_bits(entry->opcode, 1, 6) | make_agc_bits(address & 0x01FF, 7, 15);
     } else {
-        // 6-bit quarter code: bits 1-6 = opcode, bits 7-9 = quarter, bits 10-15 = address remainder
-        // The address parameter contains the full value; we just take the low 6 bits
-        result.word = (entry->opcode << 9) | (entry->quarter_code << 6) | (address & 0x3F);
+        // 6-bit quarter code: AGC bits 1-6 = opcode, bits 7-9 = quarter, bits 10-15 = address (6 bits)
+        result.word = make_agc_bits(entry->opcode, 1, 6) | 
+                      make_agc_bits(entry->quarter_code, 7, 9) |
+                      make_agc_bits(address & 0x3F, 10, 15);
     }
     
     result.success = true;
