@@ -13,9 +13,32 @@
 
 This document describes the instruction encoding format for AGC Block-2 machine instructions. Block-2 instructions are encoded as 16-bit words with a 15-bit data field (bits 1-15) and a parity bit (bit 0). The instruction format uses octal encoding naturally aligned to 3-bit groups.
 
-## Instruction Word Format
+## Instruction Word Format and Extracode Rule
 
-The AGC Block-2 has three instruction formats, determined by opcode field width. The **EXTEND bit** (from a preceding EXTEND instruction) determines whether certain opcodes are interpreted as basic or extracode instructions.
+The AGC Block-2 has three instruction formats. **The EXTEND bit determines which instructions are valid based on the high bit of the order code notation.**
+
+### The Extracode Rule
+
+**Order codes are written in octal notation. The first octal digit determines EXTEND requirement:**
+
+- **Order codes 0X.** (first digit 0): Valid **only without EXTEND** (basic instructions)
+- **Order codes 1X.** (first digit 1): Valid **only with EXTEND** (extracode instructions)
+
+For 3-bit whole codes written as single digit (0-7), an implicit leading 0 is assumed:
+- **0.**, **1.**, ..., **7.** are actually **(0)0.**, **(0)1.**, ..., **(0)7.** → all basic (no EXTEND)
+
+Examples:
+- TC = 0. = (0)0. → first digit 0 → basic (no EXTEND needed)
+- CA = 3. = (0)3. → first digit 0 → basic (no EXTEND needed)  
+- TCF = 01.2 → first digit 0 → basic (no EXTEND needed)
+- CCS = 01.0 → first digit 0, BUT actually requires EXTEND due to quarter code
+- READ = 10.0 → first digit 1 → extracode (requires EXTEND)
+- DCA = 13. → first digit 1 → extracode (requires EXTEND)
+
+**Clarification**: For quarter codes (XX.Y format), both the 5-bit opcode AND the quarter field determine if EXTEND is needed:
+- 01.0 with EXTEND = CCS
+- 01.2 without EXTEND = TCF
+- Both share opcode 01, but different quarters and EXTEND states
 
 ### Format 1: Whole Code Instructions (3-bit opcode)
 ```
@@ -25,20 +48,20 @@ Bit:  0  | 1 2 3 | 4 5 6 7 8 9 10 11 12 13 14 15
 - Examples: TC (0.), CA (3.), CS (4.), AD (6.), MSK (7.)
 - **Bits 1-3**: 3-bit opcode (0-7 octal)
 - **Bits 4-15**: 12-bit address (0000-7777 octal)
-- Notation: Single octal digit + "." (e.g., "0.", "3.", "4.")
-- **EXTEND bit**: Not used (these are always basic instructions)
+- Notation: Single octal digit + "." (with implicit leading 0)
+- **All 3-bit whole codes are basic instructions** (never require EXTEND)
 
 ### Format 2: Quarter Code Instructions (5-bit opcode + 3-bit quarter)
 ```
 Bit:  0  | 1 2 3 4 5 | 6 7 8 | 9 10 11 12 13 14 15
       P  |  Opcode5  | Qtr   |    7-bit Address     |
 ```
-- Examples: TCF (01.2), CCS (01.0), TS (05.4), QXCH (12.2), BZF (16.2)
-- **Bits 1-5**: 5-bit opcode (01-37 octal)
+- Examples: TCF (01.2), CCS (01.0), TS (05.4), DCA (13.), BZF (16.2)
+- **Bits 1-5**: 5-bit opcode (00-37 octal)
 - **Bits 6-8**: 3-bit quarter code (0-7 octal)
 - **Bits 9-15**: 7-bit address (000-177 octal)
-- Notation: Two-digit octal + "." + one digit (e.g., "01.2", "05.4")
-- **EXTEND bit**: Distinguishes extracode variants (e.g., CCS 01.0 requires EXTEND, TCF 01.2 does not)
+- Notation: Two-digit octal + "." + one digit (e.g., "01.2")
+- **EXTEND requirement**: Determined by opcode and quarter combination (see table below)
 
 ### Format 3: Channel Instructions (6-bit opcode + 9-bit address)
 ```
@@ -46,11 +69,10 @@ Bit:  0  | 1 2 3 4 5 6 | 7 8 9 10 11 12 13 14 15
       P  |   Opcode6   |     9-bit Channel Addr    |
 ```
 - Examples: READ (10.0), WRITE (10.1), RAND (10.2), ROR (10.4)
-- **Bits 1-6**: 6-bit opcode (010 octal for all channel instructions)
+- **Bits 1-6**: 6-bit opcode = 010 octal (for all channel instructions)
 - **Bits 7-15**: 9-bit channel address (000-777 octal)
-- Notation: "10." + digit, but the digit is part of bits 7-9 of the 9-bit channel address
-- **EXTEND bit**: Required for WAND (10.3), WOR (10.5), RXOR (10.6); not required for READ (10.0), WRITE (10.1), RAND (10.2), ROR (10.4)
-- Note: Despite notation like "10.0", this is NOT a quarter code format
+- Notation: "10.Y" where Y is first octal digit of 9-bit address (bits 7-9)
+- **All channel instructions (10.x) require EXTEND** (order code starts with "1")
 
 ### AGC Bit Ordering and Value Extraction
 
@@ -88,33 +110,27 @@ Block-2 instructions are categorized by their address mode and operation type:
 
 ### The EXTEND Bit and Extracode Instructions
 
-The **EXTEND instruction** (order code 0.0006) sets a flip-flop (SQ-EXT) that modifies how the *next* instruction is decoded:
+The **EXTEND instruction** (order code 0.0006) sets a flip-flop (SQ-EXT) that modifies how the *next* instruction is decoded.
 
-- **Without EXTEND** (SQ-EXT=0): Instructions are decoded as "basic" instructions
-- **With EXTEND** (SQ-EXT=1): Instructions are decoded as "extracode" instructions
+**Key Rule**: Order codes starting with "1" in their notation (10.x, 11.x, 12.x, 13.x, etc.) require EXTEND. Order codes starting with "0" (or single digit with implicit leading 0) do NOT require EXTEND.
 
-Some opcodes have different meanings depending on the EXTEND bit:
+| Order Code Notation | EXTEND Required? | Examples |
+|---------------------|------------------|----------|
+| (0)X. (single digit) | NO | TC (0.), CA (3.), AD (6.) |
+| 0X.Y | NO (for some quarters) | TCF (01.2), TCF (01.4), TCF (01.6) |
+| 0X.Y | YES (for some quarters) | CCS (01.0), TS (05.4), XCH (05.5) |
+| 1X. or 1X.Y | YES | READ (10.0), DCA (13.), BZF (16.2), MP (17.) |
 
-| Order Code | Without EXTEND | With EXTEND |
-|------------|----------------|-------------|
-| 01.0       | (invalid)      | CCS E |
-| 05.0       | RESUME (if addr=017) | NDX E |
-| 05.2       | (invalid)      | DXCH E |
-| 05.4       | (invalid)      | TS E |
-| 05.5       | (invalid)      | XCH E |
-| 02.0       | (invalid)      | DAS E |
-| 02.2       | (invalid)      | LXCH E |
-| 02.4       | (invalid)      | INCR E |
-| 02.6       | (invalid)      | ADS E |
-| 10.3       | (invalid)      | WAND H |
-| 10.5       | (invalid)      | WOR H |
-| 10.6       | (invalid)      | RXOR H |
-| 11.0       | (invalid)      | DV E |
-| 12.0       | (invalid)      | MSU E |
-| 12.2       | BZMF F         | QXCH E |
-| 12.4       | BZMF F         | AUG E |
-| 12.6       | BZMF F         | DIM E |
-| 16.0       | BZF F          | SU E |
+**Detailed Breakdown:**
+
+**Without EXTEND (basic instructions):**
+- All 3-bit whole codes: 0., 1., 2., 3., 4., 5., 6., 7.
+- Quarter codes 0X.Y (depending on quarter): TCF (01.2/4/6), BZMF (12.2/4/6)
+
+**With EXTEND (extracode instructions):**
+- All channel instructions (10.x): READ (10.0), WRITE (10.1), RAND (10.2), WAND (10.3), ROR (10.4), WOR (10.5), RXOR (10.6)
+- Some quarter codes: CCS (01.0), various 02.x, various 05.x, DV (11.0), various 12.x when EXTEND set, SU (16.0)
+- 5-bit whole codes in 1X range: DCA (13.), DCS (14.), NDX (15.), BZF (16.2/4/6), MP (17.)
 
 The EXTEND bit is automatically cleared after the next instruction executes.
 
