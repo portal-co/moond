@@ -324,13 +324,16 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
             result.type = INSTR_GO;
             result.addr_mode = ADDR_NONE;
             result.status++;
-        } else {
-            // TC K - order code 00.
+        } else if (addr_12 >= 04000) {
+            // TC K - order code 00. (only valid for fixed memory >= 04000)
+            // See ref/block2/MEMORY_MAP.md: TC to registers/erasable is invalid
             result.type = INSTR_TC;
             result.addr_mode = ADDR_K;
             result.address = addr_12;
             result.status++;
         }
+        // Addresses < 04000 (registers and erasable) are not valid for TC
+        // and will remain INSTR_UNKNOWN unless matched by 6-bit opcodes
     }
     
     // Order code 03. - CA
