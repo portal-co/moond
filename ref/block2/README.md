@@ -99,6 +99,7 @@ See `ref/TODO_AUDIT.md` for centralized tracking of all 76 TODO:VERIFY markers.
 ```
 block2/
 ├── README.md (this file)
+├── OPCODE_ENCODING.md (instruction encoding format overview)
 ├── differences.md (Block-2 vs Block-1 summary)
 ├── index.md (instruction listing)
 ├── definitions/ (Block-2-specific definitions if needed)
@@ -186,6 +187,7 @@ When working with Block-2 files:
 
 ## Related Documentation
 
+- **Opcode Encoding:** `ref/block2/OPCODE_ENCODING.md` - Instruction format and encoding reference
 - **Block-1 Instructions:** `ref/block1/instr/` - Compare for differences
 - **CPU Documentation:** `ref/cpu/` - Shared registers and adder behavior
 - **Canonical Definitions:** `ref/definitions/` - Instruction types, STD2, EXTEND
