@@ -1,11 +1,13 @@
 # Block-2 Opcode Encoding Overview
 
 > Created: 2026-01-31T01:22:00.000Z  
-> Updated: 2026-01-31T02:00:00.000Z (verified encoding with PDF, fixed address field sizes)
+> Updated: 2026-01-31T05:25:00.000Z (added bit reversal information)
 >
 > Source: `agcis_32_blk2_instructions.pdf` — pages 10–24 (tables 32-2, 32-3), 93–106 (NDX, AD, SU, MP), 163–170 (EXTEND and extracode instructions).
 >
 > **Verification Status**: Encoding verified against PDF for TC, CA, CS, AD, MP, EXTEND, GO, and extracode operation. Address field sizes confirmed for 3-bit, 6-bit whole codes, and quarter codes.
+>
+> **Bit Ordering Note**: The AGC uses backwards bit numbering (bit 15 is LSB, bit 1 is MSB in data field). When extracting multi-bit fields using C bit indices (where bit 0 is LSB), the extracted values must be bit-reversed to obtain the correct AGC numeric values. See `BIT_REVERSAL_REQUIRED.md` for details.
 
 ## Overview
 
@@ -21,6 +23,28 @@ Bit:  0  | 1 2 3 | 4 5 6 | 7 8 9 | 10 11 12 | 13 14 15
 - **Bit 0**: Parity bit (not shown in octal representation)
 - **Bits 1-3**: Primary opcode (octal digit)
 - **Bits 4-15**: Address or operand field (4 octal digits)
+
+### AGC Bit Ordering and Value Extraction
+
+**Critical Note**: The AGC uses backwards bit numbering where bit 15 is the LSB and bit 1 is the MSB of the data field. When implementing decoders/encoders in modern systems (like C), special care must be taken:
+
+1. **AGC bit numbering**: Bit 15 = LSB, Bit 1 = MSB (data field)
+2. **C bit indexing**: Bit 0 = LSB, Bit 14 = MSB (for 15-bit field)
+3. **Mapping**: AGC bit N corresponds to C bit index (15-N)
+
+When extracting multi-bit fields (like addresses or opcodes) using C bit masks:
+- The extracted value will have bits in **C order** (normal binary)
+- To get the AGC's numeric interpretation, you must **bit-reverse** the extracted field
+
+**Example**: For a 3-bit opcode field in AGC bits 1-3:
+```
+AGC bits:  1  2  3  (MSB to LSB for this field)
+C indices: 14 13 12 (after mapping from AGC)
+Extract:   (word >> 12) & 0x7  // Gets bits in C order
+Reverse:   Must reverse 3 bits to get AGC value
+```
+
+See `include/bits.h` for bit reversal utilities and `BIT_REVERSAL_REQUIRED.md` for detailed analysis.
 
 ## Instruction Types and Encoding
 
