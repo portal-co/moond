@@ -13,60 +13,313 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         .quarter_code = 0xFF
     };
     
-    // Extract opcode fields
-    uint8_t opcode_3 = moond_extract_opcode_3(word);  // AGC bits 1-3 (top 3 bits)
-    uint8_t opcode_6 = moond_extract_opcode_6(word);  // AGC bits 1-6 (top 6 bits, for quarter codes)
-    uint8_t quarter = moond_extract_quarter(word);     // AGC bits 7-9
-    uint16_t addr_12 = moond_extract_addr_12(word);   // AGC bits 4-15
-    uint16_t addr_9 = moond_extract_addr_9(word);     // AGC bits 7-15
+    // Extract all possible opcode and address fields
+    uint8_t opcode_3 = moond_extract_opcode_3(word);
+    uint8_t opcode_6 = moond_extract_opcode_6(word);
+    uint8_t quarter = moond_extract_quarter(word);
+    uint16_t addr_12 = moond_extract_addr_12(word);
+    uint16_t addr_9 = moond_extract_addr_9(word);
+    uint16_t addr_6 = moond_extract_addr_6(word);
     
-    result.opcode = opcode_3;  // Store 3-bit opcode by default
+    result.opcode = opcode_3;  // Default to 3-bit opcode
     
-    // Decode based on opcode and extend bit
-    // Use OCTAL() macro for clarity on octal constants
-    // Check 6-bit opcodes (quarter codes and whole codes) BEFORE 3-bit opcodes
-    // to avoid false matches on the top 3 bits
+    // ========================================================================
+    // SECTION 1: 6-bit Quarter Code Instructions (check FIRST)
+    // Format: opcode (6 bits) + quarter (3 bits) + address (6 bits)
+    // ========================================================================
     
-    // Quarter codes - check 6-bit opcode first
-    if (opcode_6 == OCTAL(01)) {
+    // Order code 01.x
+    if (opcode_6 == 01) {
         result.quarter_code = quarter;
         result.opcode = opcode_6;
         if (quarter == 0 && extend_bit) {
-            // CCS E - order code 01.0 (extracode)
+            // CCS E - 01.0 (extracode)
             result.type = INSTR_CCS;
             result.addr_mode = ADDR_E;
-            result.address = addr_12;
+            result.address = addr_6;
             result.requires_extend = true;
             return result;
         } else if (quarter == 2 || quarter == 4 || quarter == 6) {
-            // TCF F - order code 01.2, 01.4, 01.6
+            // TCF F - 01.2, 01.4, 01.6
             result.type = INSTR_TCF;
             result.addr_mode = ADDR_F;
-            result.address = addr_12;
+            result.address = addr_6;
             return result;
         }
     }
     
-    // Continue with other 6-bit opcodes...
-    // (rest of quarter code checks will go here)
+    // Order code 02.x
+    if (opcode_6 == 02) {
+        result.quarter_code = quarter;
+        result.opcode = opcode_6;
+        if (extend_bit) {
+            if (quarter == 0) {
+                // DAS E - 02.0 (extracode)
+                result.type = INSTR_DAS;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            } else if (quarter == 2) {
+                // LXCH E - 02.2 (extracode)
+                result.type = INSTR_LXCH;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            } else if (quarter == 4) {
+                // INCR E - 02.4 (extracode)
+                result.type = INSTR_INCR;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            } else if (quarter == 6) {
+                // ADS E - 02.6 (extracode)
+                result.type = INSTR_ADS;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            }
+        }
+    }
     
-    // Now check 3-bit opcodes (these should come AFTER 6-bit checks)
-    // Special fixed addresses (checked first among 3-bit opcodes)
-    // But skip if this is actually a 6-bit opcode we haven't handled yet
-    if (opcode_3 == OCTAL(00) && opcode_6 != OCTAL(01)) {
-        if (addr_12 == OCTAL(00006)) {
+    // Order code 05.x
+    if (opcode_6 == 05) {
+        result.quarter_code = quarter;
+        result.opcode = opcode_6;
+        if (quarter == 0) {
+            if (extend_bit) {
+                // NDX E - 05.0 (extracode version)
+                result.type = INSTR_NDX;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            } else if (addr_6 == 017) {
+                // RESUME - 05.0017 (special)
+                result.type = INSTR_RESUME;
+                result.addr_mode = ADDR_NONE;
+                return result;
+            }
+        } else if (quarter == 2 && extend_bit) {
+            // DXCH E - 05.2 (extracode)
+            result.type = INSTR_DXCH;
+            result.addr_mode = ADDR_E;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        } else if (quarter == 4 && extend_bit) {
+            // TS E - 05.4 (extracode)
+            result.type = INSTR_TS;
+            result.addr_mode = ADDR_E;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        } else if (quarter == 5 && extend_bit) {
+            // XCH E - 05.5 (extracode)
+            result.type = INSTR_XCH;
+            result.addr_mode = ADDR_E;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        }
+    }
+    
+    // Order code 010.x (channel instructions)
+    if (opcode_6 == 010) {
+        result.quarter_code = quarter;
+        result.opcode = opcode_6;
+        if (quarter == 0) {
+            // READ H - 010.0
+            result.type = INSTR_READ;
+            result.addr_mode = ADDR_H;
+            result.address = addr_6;
+            return result;
+        } else if (quarter == 1) {
+            // WRITE H - 010.1
+            result.type = INSTR_WRITE;
+            result.addr_mode = ADDR_H;
+            result.address = addr_6;
+            return result;
+        } else if (quarter == 2) {
+            // RAND H - 010.2
+            result.type = INSTR_RAND;
+            result.addr_mode = ADDR_H;
+            result.address = addr_6;
+            return result;
+        } else if (quarter == 3 && extend_bit) {
+            // WAND H - 010.3 (extracode)
+            result.type = INSTR_WAND;
+            result.addr_mode = ADDR_H;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        } else if (quarter == 4) {
+            // ROR H - 010.4
+            result.type = INSTR_ROR;
+            result.addr_mode = ADDR_H;
+            result.address = addr_6;
+            return result;
+        } else if (quarter == 5 && extend_bit) {
+            // WOR H - 010.5 (extracode)
+            result.type = INSTR_WOR;
+            result.addr_mode = ADDR_H;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        } else if (quarter == 6 && extend_bit) {
+            // RXOR H - 010.6 (extracode)
+            result.type = INSTR_RXOR;
+            result.addr_mode = ADDR_H;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        }
+    }
+    
+    // Order code 011.x
+    if (opcode_6 == 011) {
+        result.quarter_code = quarter;
+        result.opcode = opcode_6;
+        if (quarter == 0 && extend_bit) {
+            // DV E - 011.0 (extracode)
+            result.type = INSTR_DV;
+            result.addr_mode = ADDR_E;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        }
+    }
+    
+    // Order code 012.x
+    if (opcode_6 == 012) {
+        result.quarter_code = quarter;
+        result.opcode = opcode_6;
+        if (extend_bit) {
+            if (quarter == 0) {
+                // MSU E - 012.0 (extracode)
+                result.type = INSTR_MSU;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            } else if (quarter == 2) {
+                // QXCH E - 012.2 (extracode)
+                result.type = INSTR_QXCH;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            } else if (quarter == 4) {
+                // AUG E - 012.4 (extracode)
+                result.type = INSTR_AUG;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            } else if (quarter == 6) {
+                // DIM E - 012.6 (extracode)
+                result.type = INSTR_DIM;
+                result.addr_mode = ADDR_E;
+                result.address = addr_6;
+                result.requires_extend = true;
+                return result;
+            }
+        }
+        // Also handles BZMF F and other non-extracode variants
+        if (quarter == 2 || quarter == 4 || quarter == 6) {
+            // BZMF F - 012.2, 012.4, 012.6
+            result.type = INSTR_BZMF;
+            result.addr_mode = ADDR_F;
+            result.address = addr_6;
+            return result;
+        }
+    }
+    
+    // ========================================================================
+    // SECTION 2: 6-bit Whole Code Instructions (no quarter code)
+    // Format: opcode (6 bits) + address (9 bits)
+    // ========================================================================
+    
+    // Order code 013 - DCA
+    if (opcode_6 == 013) {
+        result.opcode = opcode_6;
+        result.type = INSTR_DCA;
+        result.addr_mode = ADDR_K;
+        result.address = addr_9;
+        return result;
+    }
+    
+    // Order code 014 - DCS
+    if (opcode_6 == 014) {
+        result.opcode = opcode_6;
+        result.type = INSTR_DCS;
+        result.addr_mode = ADDR_K;
+        result.address = addr_9;
+        return result;
+    }
+    
+    // Order code 015 - NDX (basic, non-extracode)
+    if (opcode_6 == 015) {
+        result.opcode = opcode_6;
+        result.type = INSTR_NDX;
+        result.addr_mode = ADDR_K;
+        result.address = addr_9;
+        return result;
+    }
+    
+    // Order code 016.x
+    if (opcode_6 == 016) {
+        result.quarter_code = quarter;
+        result.opcode = opcode_6;
+        if (quarter == 0 && extend_bit) {
+            // SU E - 016.0 (extracode)
+            result.type = INSTR_SU;
+            result.addr_mode = ADDR_E;
+            result.address = addr_6;
+            result.requires_extend = true;
+            return result;
+        } else if (quarter == 2 || quarter == 4 || quarter == 6) {
+            // BZF F - 016.2, 016.4, 016.6
+            result.type = INSTR_BZF;
+            result.addr_mode = ADDR_F;
+            result.address = addr_6;
+            return result;
+        }
+    }
+    
+    // Order code 017 - MP (extracode)
+    if (opcode_6 == 017) {
+        result.opcode = opcode_6;
+        result.type = INSTR_MP;
+        result.addr_mode = ADDR_K;
+        result.address = addr_9;
+        result.requires_extend = true;
+        return result;
+    }
+    
+    // ========================================================================
+    // SECTION 3: 3-bit Basic Instructions
+    // Format: opcode (3 bits) + address (12 bits)
+    // ========================================================================
+    
+    // Order code 00. - TC (and special fixed addresses)
+    if (opcode_3 == 00) {
+        if (addr_12 == 00006) {
             result.type = INSTR_EXTEND;
             result.addr_mode = ADDR_NONE;
             return result;
-        } else if (addr_12 == OCTAL(00004)) {
+        } else if (addr_12 == 00004) {
             result.type = INSTR_INHINT;
             result.addr_mode = ADDR_NONE;
             return result;
-        } else if (addr_12 == OCTAL(00003)) {
+        } else if (addr_12 == 00003) {
             result.type = INSTR_RELINT;
             result.addr_mode = ADDR_NONE;
             return result;
-        } else if (addr_12 == OCTAL(04000)) {
+        } else if (addr_12 == 04000) {
             result.type = INSTR_GO;
             result.addr_mode = ADDR_NONE;
             return result;
@@ -79,287 +332,38 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    // Quarter codes - check 6-bit opcode
-    if (opcode_6 == OCTAL(01)) {
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        if (quarter == 0 && extend_bit) {
-            // CCS E - order code 01.0 (extracode)
-            result.type = INSTR_CCS;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 2 || quarter == 4 || quarter == 6) {
-            // TCF F - order code 01.2, 01.4, 01.6
-            result.type = INSTR_TCF;
-            result.addr_mode = ADDR_F;
-            result.address = addr_12;
-            return result;
-        }
-    }
-    
-    if (opcode_6 == OCTAL(02)) {
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        if (quarter == 0 && extend_bit) {
-            // DAS E - order code 02.0 (extracode)
-            result.type = INSTR_DAS;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 2) {
-            // LXCH E - order code 02.2 (may need extracode)
-            result.type = INSTR_LXCH;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = extend_bit;
-            return result;
-        } else if (quarter == 4 && extend_bit) {
-            // INCR E - order code 02.4 (extracode)
-            result.type = INSTR_INCR;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 6 && extend_bit) {
-            // ADS E - order code 02.6 (extracode)
-            result.type = INSTR_ADS;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        }
-    }
-    
-    if (opcode_3 == OCTAL(03)) {
-        // CA K - order code 03.
+    // Order code 03. - CA
+    if (opcode_3 == 03) {
         result.type = INSTR_CA;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         return result;
     }
     
-    if (opcode_3 == OCTAL(04)) {
-        // CS K - order code 04.
+    // Order code 04. - CS
+    if (opcode_3 == 04) {
         result.type = INSTR_CS;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         return result;
     }
     
-    if (opcode_6 == OCTAL(05)) {
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        if (addr_12 == OCTAL(00017)) {
-            // RESUME - order code 05.0017
-            result.type = INSTR_RESUME;
-            result.addr_mode = ADDR_NONE;
-            return result;
-        } else if (quarter == 0) {
-            // NDX E (extracode) or NDX K (basic) - order code 05.0
-            result.type = INSTR_NDX;
-            result.addr_mode = extend_bit ? ADDR_E : ADDR_K;
-            result.address = addr_12;
-            result.requires_extend = extend_bit;
-            return result;
-        } else if (quarter == 2 && extend_bit) {
-            // DXCH E - order code 05.2 (extracode)
-            result.type = INSTR_DXCH;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 4 && extend_bit) {
-            // TS E - order code 05.4 (extracode)
-            result.type = INSTR_TS;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 5) {
-            // XCH E - order code 05.5 (may need extracode)
-            result.type = INSTR_XCH;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = extend_bit;
-            return result;
-        }
-    }
-    
-    if (opcode_3 == OCTAL(06)) {
-        // AD K - order code 06.
+    // Order code 06. - AD
+    if (opcode_3 == 06) {
         result.type = INSTR_AD;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         return result;
     }
     
-    if (opcode_3 == OCTAL(07)) {
-        // MSK K - order code 07.
+    // Order code 07. - MSK
+    if (opcode_3 == 07) {
         result.type = INSTR_MSK;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         return result;
     }
     
-    if (opcode_6 == OCTAL(010)) {
-        // 10.X - Channel instructions
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        result.address = addr_9;
-        result.addr_mode = ADDR_H;
-        
-        switch (quarter) {
-            case 0:
-                result.type = INSTR_READ;
-                return result;
-            case 1:
-                result.type = INSTR_WRITE;
-                return result;
-            case 2:
-                result.type = INSTR_RAND;
-                return result;
-            case 3:
-                if (extend_bit) {
-                    result.type = INSTR_WAND;
-                    result.requires_extend = true;
-                    return result;
-                }
-                break;
-            case 4:
-                result.type = INSTR_ROR;
-                return result;
-            case 5:
-                if (extend_bit) {
-                    result.type = INSTR_WOR;
-                    result.requires_extend = true;
-                    return result;
-                }
-                break;
-            case 6:
-                if (extend_bit) {
-                    result.type = INSTR_RXOR;
-                    result.requires_extend = true;
-                    return result;
-                }
-                break;
-        }
-    }
-    
-    if (opcode_6 == OCTAL(011)) {
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        if (quarter == 0 && extend_bit) {
-            // DV E - order code 11.0 (extracode)
-            result.type = INSTR_DV;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        }
-    }
-    
-    if (opcode_6 == OCTAL(012)) {
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        if (quarter == 0 && extend_bit) {
-            // MSU E - order code 12.0 (extracode)
-            result.type = INSTR_MSU;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 2) {
-            // QXCH E - order code 12.2 (may need extracode)
-            result.type = INSTR_QXCH;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = extend_bit;
-            return result;
-        } else if (quarter == 4 && extend_bit) {
-            // AUG E - order code 12.4 (extracode)
-            result.type = INSTR_AUG;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 6 && extend_bit) {
-            // DIM E - order code 12.6 (extracode)
-            result.type = INSTR_DIM;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 2 || quarter == 4 || quarter == 6) {
-            // BZMF F - order code 12.2, 12.4, 12.6 (basic mode)
-            if (!extend_bit) {
-                result.type = INSTR_BZMF;
-                result.addr_mode = ADDR_F;
-                result.address = addr_12;
-                return result;
-            }
-        }
-    }
-    
-    if (opcode_6 == OCTAL(013)) {
-        // DCA K - order code 13. (6-bit whole code)
-        result.opcode = opcode_6;
-        result.type = INSTR_DCA;
-        result.addr_mode = ADDR_K;
-        result.address = addr_12;
-        return result;
-    }
-    
-    if (opcode_6 == OCTAL(014)) {
-        // DCS K - order code 14. (6-bit whole code)
-        result.opcode = opcode_6;
-        result.type = INSTR_DCS;
-        result.addr_mode = ADDR_K;
-        result.address = addr_12;
-        return result;
-    }
-    
-    if (opcode_6 == OCTAL(015)) {
-        // NDX K - order code 15.
-        result.opcode = opcode_6;
-        result.type = INSTR_NDX;
-        result.addr_mode = ADDR_K;
-        result.address = addr_12;
-        return result;
-    }
-    
-    if (opcode_6 == OCTAL(016)) {
-        result.quarter_code = quarter;
-        result.opcode = opcode_6;
-        if (quarter == 0 && extend_bit) {
-            // SU E - order code 16.0 (extracode)
-            result.type = INSTR_SU;
-            result.addr_mode = ADDR_E;
-            result.address = addr_12;
-            result.requires_extend = true;
-            return result;
-        } else if (quarter == 2 || quarter == 4 || quarter == 6) {
-            // BZF F - order code 16.2, 16.4, 16.6
-            result.type = INSTR_BZF;
-            result.addr_mode = ADDR_F;
-            result.address = addr_12;
-            return result;
-        }
-    }
-    
-    if (opcode_6 == OCTAL(017)) {
-        // MP K - order code 17. (6-bit extracode, requires EXTEND)
-        // Uses 9-bit address field (bits 7-15), not 12-bit
-        result.opcode = opcode_6;
-        result.type = INSTR_MP;
-        result.addr_mode = ADDR_K;
-        result.address = addr_9;  // 9-bit address, not 12-bit
-        result.requires_extend = true;  // MP requires EXTEND prefix
-        return result;
-    }
-    
-    // If we reach here, instruction is unknown
+    // If we get here, instruction is unknown
     return result;
 }

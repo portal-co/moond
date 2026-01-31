@@ -9,3 +9,4 @@ build
 /decode_test
 /encode_test
 /bits_test
+decode_test
