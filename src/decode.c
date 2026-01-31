@@ -280,10 +280,11 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     // ========================================================================
     // SECTION 3: Whole Code Instructions (3-bit opcode + 12-bit address)
     // These are checked last as they have the shortest opcode
+    // All 3-bit whole codes have implicit leading 0, so only valid WITHOUT EXTEND
     // ========================================================================
     
-    // Order code 0. - TC and special addresses
-    if (opcode_3 == 0) {
+    // Order code 0. - TC and special addresses (only without EXTEND)
+    if (opcode_3 == 0 && !extend_bit) {
         if (addr_12 == 00006) {
             result.type = INSTR_EXTEND;
             result.addr_mode = ADDR_NONE;
@@ -308,32 +309,32 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
         }
     }
     
-    // Order code 3. - CA
-    if (opcode_3 == 3) {
+    // Order code 3. - CA (only without EXTEND)
+    if (opcode_3 == 3 && !extend_bit) {
         result.type = INSTR_CA;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         result.status++;
     }
     
-    // Order code 4. - CS
-    if (opcode_3 == 4) {
+    // Order code 4. - CS (only without EXTEND)
+    if (opcode_3 == 4 && !extend_bit) {
         result.type = INSTR_CS;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         result.status++;
     }
     
-    // Order code 6. - AD
-    if (opcode_3 == 6) {
+    // Order code 6. - AD (only without EXTEND)
+    if (opcode_3 == 6 && !extend_bit) {
         result.type = INSTR_AD;
         result.addr_mode = ADDR_K;
         result.address = addr_12;
         result.status++;
     }
     
-    // Order code 7. - MSK
-    if (opcode_3 == 7) {
+    // Order code 7. - MSK (only without EXTEND)
+    if (opcode_3 == 7 && !extend_bit) {
         result.type = INSTR_MSK;
         result.addr_mode = ADDR_K;
         result.address = addr_12;

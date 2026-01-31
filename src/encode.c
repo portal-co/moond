@@ -15,6 +15,7 @@ typedef struct {
 
 static const encode_entry encode_table[] = {
     // Whole code instructions (3-bit opcode + 12-bit address)
+    // All have implicit leading 0, so never require EXTEND
     {INSTR_TC,      0, 3, 0xff, 12, false},     // TC K - 0.
     {INSTR_CA,      3, 3, 0xff, 12, false},     // CA K - 3.
     {INSTR_CS,      4, 3, 0xff, 12, false},     // CS K - 4.
@@ -25,38 +26,41 @@ static const encode_entry encode_table[] = {
     {INSTR_RELINT,  0, 3, 0xff, 12, false},     // RELINT - 0.0003
     {INSTR_GO,      0, 3, 0xff, 12, false},     // GO - 0.4000
     
-    // Quarter code instructions (5-bit opcode + 3-bit quarter + 7-bit address)
-    {INSTR_TCF,     01, 5, 2,    7, false},     // TCF F - 01.2/4/6
-    {INSTR_CCS,     01, 5, 0,    7, true},      // CCS E - 01.0 (extracode)
-    {INSTR_DAS,     02, 5, 0,    7, true},      // DAS E - 02.0 (extracode)
-    {INSTR_LXCH,    02, 5, 2,    7, true},      // LXCH E - 02.2 (extracode)
-    {INSTR_INCR,    02, 5, 4,    7, true},      // INCR E - 02.4 (extracode)
-    {INSTR_ADS,     02, 5, 6,    7, true},      // ADS E - 02.6 (extracode)
-    {INSTR_NDX,     05, 5, 0,    7, false},     // NDX E - 05.0 (can be basic or extracode)
-    {INSTR_DXCH,    05, 5, 2,    7, true},      // DXCH E - 05.2 (extracode)
-    {INSTR_TS,      05, 5, 4,    7, true},      // TS E - 05.4 (extracode)
-    {INSTR_XCH,     05, 5, 5,    7, true},      // XCH E - 05.5 (extracode)
-    {INSTR_RESUME,  05, 5, 0,    7, false},     // RESUME - 05.0017
-    {INSTR_DV,      011, 5, 0,   7, true},      // DV E - 011.0 (extracode)
-    {INSTR_MSU,     012, 5, 0,   7, true},      // MSU E - 012.0 (extracode)
-    {INSTR_QXCH,    012, 5, 2,   7, true},      // QXCH E - 012.2 (extracode)
-    {INSTR_AUG,     012, 5, 4,   7, true},      // AUG E - 012.4 (extracode)
-    {INSTR_DIM,     012, 5, 6,   7, true},      // DIM E - 012.6 (extracode)
-    {INSTR_BZMF,    012, 5, 2,   7, false},     // BZMF F - 012.2/4/6
-    {INSTR_DCA,     013, 5, 0xff, 7, false},    // DCA K - 013. (whole code in 5-bit field)
-    {INSTR_DCS,     014, 5, 0xff, 7, false},    // DCS K - 014. (whole code in 5-bit field)
-    {INSTR_SU,      016, 5, 0,   7, true},      // SU E - 016.0 (extracode)
-    {INSTR_BZF,     016, 5, 2,   7, false},     // BZF F - 016.2/4/6
-    {INSTR_MP,      017, 5, 0xff, 7, true},     // MP K - 017. (whole code, extracode)
+    // Quarter code instructions starting with 0 (5-bit opcode + 3-bit quarter + 7-bit address)
+    {INSTR_TCF,     01, 5, 2,    7, false},     // TCF F - 01.2/4/6 (no EXTEND)
+    {INSTR_CCS,     01, 5, 0,    7, true},      // CCS E - 01.0 (requires EXTEND)
+    {INSTR_DAS,     02, 5, 0,    7, true},      // DAS E - 02.0 (requires EXTEND)
+    {INSTR_LXCH,    02, 5, 2,    7, true},      // LXCH E - 02.2 (requires EXTEND)
+    {INSTR_INCR,    02, 5, 4,    7, true},      // INCR E - 02.4 (requires EXTEND)
+    {INSTR_ADS,     02, 5, 6,    7, true},      // ADS E - 02.6 (requires EXTEND)
+    {INSTR_NDX,     05, 5, 0,    7, true},      // NDX E - 05.0 (requires EXTEND for E variant)
+    {INSTR_DXCH,    05, 5, 2,    7, true},      // DXCH E - 05.2 (requires EXTEND)
+    {INSTR_TS,      05, 5, 4,    7, true},      // TS E - 05.4 (requires EXTEND)
+    {INSTR_XCH,     05, 5, 5,    7, true},      // XCH E - 05.5 (requires EXTEND)
+    {INSTR_RESUME,  05, 5, 0,    7, false},     // RESUME - 05.0017 (no EXTEND)
+    
+    // Quarter code instructions starting with 1 (ALL require EXTEND)
+    {INSTR_DV,      011, 5, 0,   7, true},      // DV E - 011.0 (requires EXTEND)
+    {INSTR_MSU,     012, 5, 0,   7, true},      // MSU E - 012.0 (requires EXTEND)
+    {INSTR_QXCH,    012, 5, 2,   7, true},      // QXCH E - 012.2 (requires EXTEND)
+    {INSTR_AUG,     012, 5, 4,   7, true},      // AUG E - 012.4 (requires EXTEND)
+    {INSTR_DIM,     012, 5, 6,   7, true},      // DIM E - 012.6 (requires EXTEND)
+    {INSTR_BZMF,    012, 5, 2,   7, true},      // BZMF F - 012.2/4/6 (requires EXTEND per order code rule)
+    {INSTR_DCA,     013, 5, 0xff, 7, true},     // DCA K - 013. (requires EXTEND)
+    {INSTR_DCS,     014, 5, 0xff, 7, true},     // DCS K - 014. (requires EXTEND)
+    {INSTR_SU,      016, 5, 0,   7, true},      // SU E - 016.0 (requires EXTEND)
+    {INSTR_BZF,     016, 5, 2,   7, true},      // BZF F - 016.2/4/6 (requires EXTEND)
+    {INSTR_MP,      017, 5, 0xff, 7, true},     // MP K - 017. (requires EXTEND)
     
     // Channel instructions (6-bit opcode + 9-bit channel address)
-    {INSTR_READ,    010, 6, 0xff, 9, false},    // READ H - 10.0
-    {INSTR_WRITE,   010, 6, 0xff, 9, false},    // WRITE H - 10.1
-    {INSTR_RAND,    010, 6, 0xff, 9, false},    // RAND H - 10.2
-    {INSTR_WAND,    010, 6, 0xff, 9, true},     // WAND H - 10.3 (extracode)
-    {INSTR_ROR,     010, 6, 0xff, 9, false},    // ROR H - 10.4
-    {INSTR_WOR,     010, 6, 0xff, 9, true},     // WOR H - 10.5 (extracode)
-    {INSTR_RXOR,    010, 6, 0xff, 9, true},     // RXOR H - 10.6 (extracode)
+    // ALL channel instructions (10.x) require EXTEND
+    {INSTR_READ,    010, 6, 0xff, 9, true},     // READ H - 10.0 (requires EXTEND)
+    {INSTR_WRITE,   010, 6, 0xff, 9, true},     // WRITE H - 10.1 (requires EXTEND)
+    {INSTR_RAND,    010, 6, 0xff, 9, true},     // RAND H - 10.2 (requires EXTEND)
+    {INSTR_WAND,    010, 6, 0xff, 9, true},     // WAND H - 10.3 (requires EXTEND)
+    {INSTR_ROR,     010, 6, 0xff, 9, true},     // ROR H - 10.4 (requires EXTEND)
+    {INSTR_WOR,     010, 6, 0xff, 9, true},     // WOR H - 10.5 (requires EXTEND)
+    {INSTR_RXOR,    010, 6, 0xff, 9, true},     // RXOR H - 10.6 (requires EXTEND)
 };
 
 static const size_t encode_table_size = sizeof(encode_table) / sizeof(encode_table[0]);
