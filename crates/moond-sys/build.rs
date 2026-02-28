@@ -23,13 +23,13 @@ fn main() -> std::io::Result<()> {
     cc::Build::new()
         .includes(&includes)
         .files(
-            ["core.c", "decode.c"]
+            ["bits.c", "core.c", "decode.c", "encode.c", "instr.c", "parity.c"]
                 .into_iter()
                 .map(|a| format!("cc-copy/src/{a}")),
         )
         .compile("moond");
     let mut b = bindgen::Builder::default();
-    for h in ["core.h", "decode.h"] {
+    for h in ["bits.h", "core.h", "decode.h", "encode.h", "instr.h", "parity.h"] {
         b = b.header(format!("{m}/cc-copy/include/{h}"));
     }
     b.layout_tests(false)
