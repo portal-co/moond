@@ -25,6 +25,14 @@ void XCH_E(uint16_t E) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set tmp mem
+set mem A
+set A tmp
+```
+
 Notes
 - Overflow semantics: when writing A into E the overflow bit may be lost for E/F memory depending on variant; helpers `read_memory`/`write_memory` preserve AGC-specific edit semantics.
 - XCH variants (LXCH, QXCH) follow the same pattern but target different registers.

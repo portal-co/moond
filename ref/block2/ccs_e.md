@@ -49,6 +49,16 @@ bool is_minus_zero(int16_t value) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set A mem
+branch_if is_pos(A) pc_rel(0)
+branch_if is_plus_zero(A) pc_rel(1)
+branch_if is_neg(A) pc_rel(2)
+branch pc_rel(3)
+```
+
 Notes
 - Unlike CCS K, CCS E supports extended addressing to access E-memory banks.
 - E-memory access may involve edit/restore operations handled by memory subsystem.

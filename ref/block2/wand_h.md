@@ -27,6 +27,13 @@ void WAND_H(uint16_t H) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set chan and(A,chan)
+```
+
 Notes
 - This instruction both reads and writes the addressed channel; write_channel must respect channel formatting and parity rules.
 Inline notes

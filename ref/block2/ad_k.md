@@ -35,6 +35,12 @@ void AD_K(uint16_t K) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set A oc_add(A,mem)
+```
+
 Notes
 - Block-2 ADD has same behavior as Block-1 but may have different timing characteristics.
 - set_overflow_flags() implements AGC's overflow detection (see ADS/DAS for related behavior).

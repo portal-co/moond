@@ -35,6 +35,13 @@ void DIM_E(uint16_t E) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set mem dim(mem)
+```
+
 Notes
 - On E-memory writes, editing rules apply; if E represents special counters, Counter Priority Control may be notified on overflow/underflow.
 Inline notes

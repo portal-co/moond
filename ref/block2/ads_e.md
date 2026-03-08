@@ -32,6 +32,15 @@ void ADS_E(uint16_t E) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set tmp mem
+set mem oc_add(A,tmp)
+set A mem
+```
+
 Notes
 - encode_with_overflow(sum) returns the 15/16-bit representation put into A where positive/negative overflow are encoded as 000001 and 177776 respectively per AGC conventions.
 Inline notes

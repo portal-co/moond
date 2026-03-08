@@ -16,6 +16,13 @@ void SHINC_C(uint16_t C) {
     if (detect_overflow_on_shift(v)) signal_rupter_if_needed();
 }
 
+
+## Semantics
+
+```agc-sem
+set mem oc_add(mem,1)
+```
+
 Notes
 - Exact behavior depends on the counter configuration and whether a ONE should be shifted into LSB for SHANC; SHINC inserts ZERO.
 Inline notes

@@ -20,6 +20,13 @@ void TCF_F(uint16_t F) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+branch operand
+```
+
 Notes
 - TCF_F leaves bank register unchanged and uses the fixed-area address in F for the next fetch.
 - Block-2 differences: May require prior EXTEND instruction to access extra-code variants.

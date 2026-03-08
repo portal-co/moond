@@ -33,6 +33,12 @@ void SU_E(uint16_t E) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set A oc_sub(A,mem)
+```
+
 Notes
 - This collapses the SU0/STD2 subinstruction behavior; helpers maintain AGC-specific overflow and sign behavior.
 Inline notes

@@ -27,6 +27,13 @@ void WOR_H(uint16_t H) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set chan or(A,chan)
+```
+
 Notes
 - write_channel must handle channel width and parity bits as per peripheral definitions.
 Inline notes

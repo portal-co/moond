@@ -15,6 +15,13 @@ void SHANC_C(uint16_t C) {
     if (detect_overflow_on_shift(v)) signal_rupter_if_needed();
 }
 
+
+## Semantics
+
+```agc-sem
+set mem oc_add(mem,1)
+```
+
 Notes
 - SHANC differs from SHINC only by the inserted ONE in LSB; helpers handle overflow/priority signaling.
 Inline notes

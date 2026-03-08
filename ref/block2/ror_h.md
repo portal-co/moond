@@ -23,6 +23,13 @@ void ROR_H(uint16_t H) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set A or(A,chan)
+```
+
 Notes
 - For OR operations involving SCALER or other 14-bit channels, read_channel must provide the correct bit alignment; OR is performed on the canonical 15-bit field used in AGC docs.
 Inline notes

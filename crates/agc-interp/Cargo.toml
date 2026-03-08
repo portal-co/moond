@@ -2,9 +2,10 @@
 name = "agc-interp"
 version = "0.1.0"
 edition = "2021"
-description = "AGC Block-2 interpreter with parseable instruction specification"
+description = "AGC Block-2 interpreter (no_std)"
 
-# No external dependencies — parsing and execution use only std
+[dependencies]
+agc-isa = { path = "../agc-isa" }
 
 [dev-dependencies]
 # none

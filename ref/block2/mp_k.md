@@ -32,6 +32,13 @@ void MP_K(uint16_t K) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set L mul_lo(A,mem)
+set A mul_hi(A,mem)
+```
+
 Notes
 - Inline notes above explain why early micro-ops are shown inline for Block-2.
 - Edge cases: exact overflow encoding and timing of write-backs to E-memory are marked with `TODO:VERIFY` where the PDF is ambiguous.

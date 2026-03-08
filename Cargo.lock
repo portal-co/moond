@@ -3,7 +3,22 @@
 version = 4
 
 [[package]]
+name = "agc-driver"
+version = "0.1.0"
+dependencies = [
+ "agc-interp",
+ "agc-isa",
+]
+
+[[package]]
 name = "agc-interp"
+version = "0.1.0"
+dependencies = [
+ "agc-isa",
+]
+
+[[package]]
+name = "agc-isa"
 version = "0.1.0"
 
 [[package]]

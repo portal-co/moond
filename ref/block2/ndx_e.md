@@ -28,6 +28,14 @@ void NDX_E(uint16_t E) {
 Helpers
 - derive_instruction(next_inst, idx): performs bitwise addition of idx to the instruction word/address per AGC rules, preserves EXT semantics, and returns normalized Basic Instruction (not an Extra-Code instruction unless valid).
 
+
+## Semantics
+
+```agc-sem
+set tmp mem
+set deref(Z) oc_add(deref(Z),tmp)
+```
+
 Notes
 - NDX E collapses NDXO/NDXI subinstructions into one logical operation for documentation; preserve precise bit/quarter-code arithmetic in derive_instruction for emulation fidelity.
 Inline notes

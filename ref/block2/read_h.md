@@ -23,6 +23,12 @@ void READ_H(uint16_t H) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set A chan
+```
+
 Notes
 - read_channel(H) returns the channel content as a 15-bit/16-bit value; for display-only channels the helper should zero-extend or sign-extend as appropriate.
 - Use ref/STD2.md and ref/Instruction.md for helpers and type conventions.

@@ -19,6 +19,13 @@ void RESUME(void) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+branch mem_at(0o16)
+```
+
 Notes
 - RESUME relies on saved BRUPT/ZRUPT locations (0017/0015) and checks the INHINT/RELINT state prior to resuming; helper functions abstract these checks.
 Inline notes

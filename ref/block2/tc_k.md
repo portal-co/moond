@@ -24,6 +24,13 @@ void TC_K(uint16_t K) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set Q Z
+branch operand
+```
+
 Inline notes
 - TC_K in Block-2 presents the STMIC stages inline to show precise micro-op grouping; callers should reference ref/STD2.md for the finalization semantics.
 

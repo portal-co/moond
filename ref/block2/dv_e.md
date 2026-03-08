@@ -41,6 +41,14 @@ void DV_E(uint16_t E) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set tmp A
+set A div_q(tmp,L,mem)
+set L div_r(tmp,L,mem)
+```
+
 Notes
 - This routine represents the logical effect of the DV0..DV7/DV4 sequence; detailed per-action timing and specific bit-level end-around-carry behavior are encapsulated in helpers (set_div_sign_and_overflow, handle_divide_by_zero) for clarity.
 Inline notes

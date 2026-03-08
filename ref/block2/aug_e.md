@@ -35,6 +35,13 @@ void AUG_E(uint16_t E) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set mem aug(mem)
+```
+
 Notes
 - Implementation must handle E-memory edits on write and may trigger Counter Priority Control if E addresses counters.
 Inline notes

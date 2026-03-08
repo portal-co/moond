@@ -21,6 +21,13 @@ void PINC_C(uint16_t C) {
     // (bookkeeping left minimal for doc clarity)
 }
 
+
+## Semantics
+
+```agc-sem
+set mem oc_add(mem,1)
+```
+
 Notes
 - counter_priority_control_request_address() supplies the address selected by the Counter Priority Control hardware.
 Inline notes

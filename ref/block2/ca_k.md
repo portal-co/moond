@@ -23,6 +23,12 @@ void CA_K(uint16_t K) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set A mem
+```
+
 Notes
 - If K addresses E-memory the read/restore path obeys E-memory timing and editing rules; helper `read_memory` encapsulates those details.
 - CA_K is the basic load into A; CA A/CA L/CA Q and CA ZERO variants follow the same pattern but target different registers.

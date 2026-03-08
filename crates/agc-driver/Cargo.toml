@@ -1,0 +1,9 @@
+[package]
+name = "agc-driver"
+version = "0.1.0"
+edition = "2021"
+description = "File I/O driver for loading AGC ISA specs from markdown reference documents"
+
+[dependencies]
+agc-isa = { path = "../agc-isa" }
+agc-interp = { path = "../agc-interp" }

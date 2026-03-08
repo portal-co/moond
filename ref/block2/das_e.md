@@ -38,6 +38,16 @@ void DAS_E(uint16_t E) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set tmp mem
+set mem oc_add(L,tmp)
+set mem_hi dp_add_hi(A,L,mem_hi,tmp)
+set A 0
+```
+
 Notes
 - encode_double_add_overflow(sum) implements AGC's rule for placing overflow indicators into A when double-precision storage overflows occur; helpers must preserve AGC bit semantics and editing for E-memory writes.
 Inline notes

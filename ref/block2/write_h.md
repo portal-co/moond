@@ -20,6 +20,13 @@ void WRITE_H(uint16_t H) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set chan A
+```
+
 Notes
 - write_channel must implement channel-specific formatting and parity as required by the peripheral; see ref/cpu/write_amplifiers.md for channel I/O notes.
 Inline notes

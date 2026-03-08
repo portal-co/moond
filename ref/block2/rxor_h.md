@@ -23,6 +23,13 @@ void RXOR_H(uint16_t H) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set A xor(A,chan)
+```
+
 Notes
 - When used with SCALER/short channels, read_channel must normalize width; the XOR operates on the canonical 15-bit content used throughout the docs.
 Inline notes

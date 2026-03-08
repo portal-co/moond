@@ -14,6 +14,13 @@ void MCDU_C(uint16_t C) {
     if (v == 0o77777) notify_counter_wrap(addr);
 }
 
+
+## Semantics
+
+```agc-sem
+set mem oc_sub(mem,1)
+```
+
 Notes
 - Helper cyclic_twos_decrement implements TWO's-complement subtraction with proper wrapping semantics.
 Inline notes

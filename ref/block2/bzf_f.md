@@ -26,6 +26,12 @@ void BZF_F(uint16_t F) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+branch_if is_plus_zero(A) operand
+```
+
 Notes
 - EXT handling: callers must execute EXTEND instruction when an Extra-Code/Fixed-F instruction requires the EXT bit to be set before BZF_F.
 - This pseudocode models the observable branching behavior.

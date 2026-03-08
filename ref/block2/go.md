@@ -19,6 +19,13 @@ void GO(void) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+branch 0o4000
+```
+
 Notes
 - GO is used by system error handlers; the exact restart target can be environment-dependent; the helper extract_order_code_for_restart() returns the proper order code for the restart vector.
 Inline notes

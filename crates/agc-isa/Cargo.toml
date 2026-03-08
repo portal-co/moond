@@ -1,0 +1,11 @@
+[package]
+name = "agc-isa"
+version = "0.1.0"
+edition = "2021"
+description = "AGC Block-2 ISA specification — opcode definitions and semantics DSL (no_std)"
+
+[features]
+default = []
+
+[dependencies]
+# no external deps

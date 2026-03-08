@@ -26,6 +26,13 @@ void MSU_E(uint16_t E) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set A oc_sub(A,mem)
+```
+
 Notes
 - `twos_modular_subtract` performs cyclic subtraction with final sign correction as described in AGCIS (ensures result is expressed in ONE's complement convention used by AGC for angular values).
 - Use helpers to preserve exact bit and sign behaviors when converting between TWO's- and ONE's-complement representations.

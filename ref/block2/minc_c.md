@@ -16,6 +16,13 @@ void MINC_C(uint16_t C) {
     if (v == 0o77777) notify_counter_underflow(addr);
 }
 
+
+## Semantics
+
+```agc-sem
+set mem oc_sub(mem,1)
+```
+
 Notes
 - Implementation uses sign_extend15 to maintain consistent semantics for counters stored as complement numbers.
 Inline notes

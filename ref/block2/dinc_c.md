@@ -15,6 +15,13 @@ void DINC_C(uint16_t C) {
     write_memory(addr, (uint16_t)(v & 0x7FFF));
 }
 
+
+## Semantics
+
+```agc-sem
+set mem dim(mem)
+```
+
 Notes
 - The Counter Priority Control is notified on special overflow conditions per hardware rules.
 Inline notes

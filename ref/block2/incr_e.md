@@ -30,6 +30,13 @@ void INCR_E(uint16_t E) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set mem oc_add(mem,1)
+```
+
 Notes
 - If E corresponds to a counter address that requires Counter Priority handling, the implementation must notify the Counter Priority Control on overflow as described in AGCIS (e.g., addresses 0024..0027)."
 Inline notes

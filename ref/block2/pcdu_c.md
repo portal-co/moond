@@ -16,6 +16,13 @@ void PCDU_C(uint16_t C) {
     if (v == 0) notify_counter_wrap(addr);
 }
 
+
+## Semantics
+
+```agc-sem
+set mem oc_add(mem,1)
+```
+
 Notes
 - cyclic_twos_increment handles the TWO's-complement specifics; see ref/block2/msu_e.md for TWO's-complement helpers.
 Inline notes

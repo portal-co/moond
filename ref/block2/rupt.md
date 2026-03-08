@@ -23,6 +23,14 @@ void RUPT(void) {
 }
 ```
 
+## Semantics
+
+```agc-sem
+set mem_at(0o17) deref(Z)
+set mem_at(0o16) Z
+branch mem_at(0o4)
+```
+
 Notes
 - interrupt_priority_control_get_routine_address() is an environment helper that responds to external interrupt logic; precise priority handling is outside this doc's scope.
 - RUPT is typically preceded by INHINT/RELINT state handling.

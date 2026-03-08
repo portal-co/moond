@@ -23,6 +23,13 @@ void RAND_H(uint16_t H) {
 }
 ```
 
+
+## Semantics
+
+```agc-sem
+set A and(A,chan)
+```
+
 Notes
 - Channel reads use read_channel(H) which returns the appropriate bit-width; the AND is performed on the lower 15 bits with special handling for parity/overflow bits where applicable.
 Inline notes
