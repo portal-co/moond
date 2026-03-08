@@ -283,8 +283,9 @@ moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit) {
     // All 3-bit whole codes have implicit leading 0, so only valid WITHOUT EXTEND
     // ========================================================================
     
-    // Order code 0. - TC and special addresses (only without EXTEND)
-    if (opcode_3 == 0 && !extend_bit) {
+    // Order code 0. - TC and special addresses (only without EXTEND and only if no
+    // quarter-code instruction already matched — TCF shares the opcode_3==0 space).
+    if (opcode_3 == 0 && !extend_bit && result.status < 0) {
         if (addr_12 == 00006) {
             result.type = INSTR_EXTEND;
             result.addr_mode = ADDR_NONE;

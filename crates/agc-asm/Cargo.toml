@@ -1,0 +1,9 @@
+[package]
+name = "agc-asm"
+version = "0.1.0"
+edition = "2021"
+description = "AGC Block-2 assembler and disassembler"
+
+[dependencies]
+agc-isa = { path = "../agc-isa" }
+agc-interp = { path = "../agc-interp" }

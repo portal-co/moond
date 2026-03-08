@@ -84,6 +84,8 @@ bool moond_instr_needs_extend(moond_instr_type type) {
     switch (type) {
         // E-type extracode instructions
         case INSTR_CCS:
+        case INSTR_BZF:
+        case INSTR_BZMF:
         case INSTR_TS:
         case INSTR_XCH:
         case INSTR_LXCH:
@@ -98,11 +100,17 @@ bool moond_instr_needs_extend(moond_instr_type type) {
         case INSTR_DIM:
         case INSTR_MSU:
         case INSTR_STORE:
-        // Channel extracode instructions
+        // Channel extracode instructions (all 10.x variants require EXTEND)
+        case INSTR_READ:
+        case INSTR_WRITE:
+        case INSTR_RAND:
         case INSTR_WAND:
+        case INSTR_ROR:
         case INSTR_WOR:
         case INSTR_RXOR:
         // K-type extracode
+        case INSTR_DCA:
+        case INSTR_DCS:
         case INSTR_MP:
             return true;
         // NDX can be either E (extracode) or K (basic)

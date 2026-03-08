@@ -3,6 +3,24 @@
 version = 4
 
 [[package]]
+name = "agc-asm"
+version = "0.1.0"
+dependencies = [
+ "agc-interp",
+ "agc-isa",
+]
+
+[[package]]
+name = "agc-crosstest"
+version = "0.1.0"
+dependencies = [
+ "agc-asm",
+ "agc-interp",
+ "agc-isa",
+ "moond-sys",
+]
+
+[[package]]
 name = "agc-driver"
 version = "0.1.0"
 dependencies = [

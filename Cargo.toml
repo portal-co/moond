@@ -1,5 +1,5 @@
 [workspace]
-members=["crates/moond-sys", "crates/agc-interp", "crates/agc-isa", "crates/agc-driver"]
+members=["crates/moond-sys", "crates/agc-interp", "crates/agc-isa", "crates/agc-driver", "crates/agc-asm", "crates/agc-crosstest"]
 resolver="3"
 
 [workspace.package]

@@ -102,33 +102,34 @@ pub fn decode<'s>(
             (0o12, 2) => return lookup(specs, InstrType::Qxch, a7, word, extend),
             (0o12, 4) => return lookup(specs, InstrType::Aug,  a7, word, extend),
             (0o12, 6) => return lookup(specs, InstrType::Dim,  a7, word, extend),
-            (0o13, _) => return lookup(specs, InstrType::Dca, addr_12(word), word, extend),
-            (0o14, _) => return lookup(specs, InstrType::Dcs, addr_12(word), word, extend),
-            (0o15, _) => return lookup(specs, InstrType::Ndx, addr_12(word), word, extend),
+            (0o13, _) => return lookup(specs, InstrType::Dca, a7, word, extend),
+            (0o14, _) => return lookup(specs, InstrType::Dcs, a7, word, extend),
+            (0o15, _) => return lookup(specs, InstrType::Ndx, a7, word, extend),
             (0o16, 2) | (0o16, 4) | (0o16, 6) => return lookup(specs, InstrType::Bzf, a7, word, extend),
             (0o16, 0) => return lookup(specs, InstrType::Su, a7, word, extend),
-            (0o17, _) => return lookup(specs, InstrType::Mp, addr_12(word), word, extend),
+            (0o17, _) => return lookup(specs, InstrType::Mp, a7, word, extend),
             _ => {}
         }
     }
 
-    // Non-extended quarter-code instructions
-    match (opc5, qtr) {
-        (0o01, 2) | (0o01, 4) | (0o01, 6) => return lookup(specs, InstrType::Tcf, a7, word, extend),
-        (0o02, 0) | (0o02, 2) | (0o02, 4) | (0o02, 6) => return lookup(specs, InstrType::Lxch, a7, word, extend),
-        (0o05, 2) => return lookup(specs, InstrType::Dxch, a7, word, extend),
-        (0o05, 4) => return lookup(specs, InstrType::Ts,   a7, word, extend),
-        (0o05, 5) => return lookup(specs, InstrType::Xch,  a7, word, extend),
-        (0o05, 0) => return lookup(specs, InstrType::Ndx,  addr_12(word), word, extend),
-        (0o12, 0) | (0o12, 2) | (0o12, 4) | (0o12, 6) => return lookup(specs, InstrType::Qxch, a7, word, extend),
-        _ => {}
+    // Non-extended quarter-code instructions (only valid without EXTEND)
+    // TCF is the only quarter-code instruction that does NOT require EXTEND.
+    // All other quarter-code families (02.x, 05.x, 012.x, etc.) require EXTEND
+    // and are handled above. Words in those ranges without EXTEND fall through
+    // to the whole-3 decoder below.
+    if !extend && opc5 == 0o01 {
+        match qtr {
+            2 | 4 | 6 => return lookup(specs, InstrType::Tcf, a7, word, extend),
+            _ => {}
+        }
     }
 
-    // Section 3: Whole-code instructions
+    // Section 3: Whole-code instructions (only valid without EXTEND)
+    // All 3-bit whole codes have an implicit leading 0, so only decode without EXTEND.
     let opc3 = opcode_3(word);
     let a12  = addr_12(word);
 
-    if opc3 == 0o0 {
+    if opc3 == 0o0 && !extend {
         match a12 {
             0o0006 => return lookup(specs, InstrType::Extend, 0, word, extend),
             0o0004 => return lookup(specs, InstrType::Inhint, 0, word, extend),
@@ -138,8 +139,8 @@ pub fn decode<'s>(
         }
     }
 
-    // RESUME — special: 05.0017 without EXTEND
-    if opc5 == 0o05 && a7 == 0o017 && !extend {
+    // RESUME — special: 05.0.0017 (opcode=05, quarter=0, addr=017) without EXTEND
+    if opc5 == 0o05 && qtr == 0 && a7 == 0o017 && !extend {
         return lookup(specs, InstrType::Resume, 0, word, extend);
     }
 
@@ -148,15 +149,18 @@ pub fn decode<'s>(
         return lookup(specs, InstrType::Rupt, 0, word, extend);
     }
 
-    match opc3 {
-        0o1 => return lookup(specs, InstrType::Tc,  a12, word, extend),
-        0o2 => return lookup(specs, InstrType::Tc,  a12, word, extend),
-        0o3 => return lookup(specs, InstrType::Ca,  a12, word, extend),
-        0o4 => return lookup(specs, InstrType::Cs,  a12, word, extend),
-        0o5 => return lookup(specs, InstrType::Tc,  a12, word, extend),
-        0o6 => return lookup(specs, InstrType::Ad,  a12, word, extend),
-        0o7 => return lookup(specs, InstrType::Msk, a12, word, extend),
-        _   => {}
+    if !extend {
+        // Only opcodes 3, 4, 6, 7 are valid whole-code instructions distinct from
+        // TC (opcode 0 already handled above). Opcodes 1, 2, 5 overlap with the
+        // quarter-code instruction space (opc5 prefixes) and have no valid
+        // whole-code meaning — the C decoder leaves them unmatched.
+        match opc3 {
+            0o3 => return lookup(specs, InstrType::Ca,  a12, word, extend),
+            0o4 => return lookup(specs, InstrType::Cs,  a12, word, extend),
+            0o6 => return lookup(specs, InstrType::Ad,  a12, word, extend),
+            0o7 => return lookup(specs, InstrType::Msk, a12, word, extend),
+            _   => {}
+        }
     }
 
     err(word, extend, "no matching instruction encoding")

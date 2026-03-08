@@ -19,7 +19,18 @@ $CC $CFLAGS -c src/parity.c -o build/parity.o
 echo "Archiving moond-core library..."
 ar rcs build/libmoond-core.a build/core.o build/instr.o build/decode.o build/encode.o build/parity.o
 
+echo "Building asm and disasm modules..."
+$CC $CFLAGS -c src/asm.c -o build/asm.o
+$CC $CFLAGS -c src/disasm.c -o build/disasm.o
+
+echo "Archiving moond-core library (with asm/disasm)..."
+ar rcs build/libmoond-core.a build/core.o build/instr.o build/decode.o build/encode.o build/parity.o build/asm.o build/disasm.o
+
 echo "Building decode_test executable..."
 $CC $CFLAGS src/decode_test.c build/libmoond-core.a -o decode_test
+
+echo "Building agc_asm and agc_disasm executables..."
+$CC $CFLAGS src/agc_asm_main.c build/libmoond-core.a -o build/agc_asm
+$CC $CFLAGS src/agc_disasm_main.c build/libmoond-core.a -o build/agc_disasm
 
 echo "Build complete!"

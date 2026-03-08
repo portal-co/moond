@@ -27,45 +27,47 @@ typedef moond_instr moond_decoded_instr;
 // extend_bit: True if previous instruction was EXTEND
 moond_decoded_instr moond_decode_instr(uint16_t word, bool extend_bit);
 
+// ── TEMPORARY: Bit reversal DISABLED ─────────────────────────────────────────
+// Bit reversal was previously enabled here (see ref/block2/BIT_REVERSAL_DECISION.md).
+// It is now temporarily disabled so that the C wire format matches the Rust
+// agc-interp implementation, enabling cross-language round-trip testing.
+//
+// TODO: migrate to a runtime `bool use_bit_reversal` flag on the encoder/decoder
+//       after the assembler, disassembler, and cross-tests are in place.
+//       See ref/block2/BIT_REVERSAL_DECISION.md for the reversal rationale.
+// ──────────────────────────────────────────────────────────────────────────────
+
 // Helper: Extract 3-bit opcode (AGC bits 1-3) for whole codes
-// Note: Uses bit reversal to get correct AGC numeric value
 static inline uint8_t moond_extract_opcode_3(uint16_t word) {
-    return extract_agc_bits_reversed(word, 1, 3);
+    return extract_agc_bits(word, 1, 3);
 }
 
 // Helper: Extract 5-bit opcode (AGC bits 1-5) for quarter codes
-// Note: Uses bit reversal to get correct AGC numeric value
 static inline uint8_t moond_extract_opcode_5(uint16_t word) {
-    return extract_agc_bits_reversed(word, 1, 5);
+    return extract_agc_bits(word, 1, 5);
 }
 
 // Helper: Extract 6-bit opcode (AGC bits 1-6) for channel instructions
-// Note: Uses bit reversal to get correct AGC numeric value
 static inline uint8_t moond_extract_opcode_6(uint16_t word) {
-    return extract_agc_bits_reversed(word, 1, 6);
+    return extract_agc_bits(word, 1, 6);
 }
 
 // Helper: Extract quarter code (AGC bits 6-8, 1 octal digit)
-// Used by quarter code instructions
-// Note: Uses bit reversal to get correct AGC numeric value
 static inline uint8_t moond_extract_quarter(uint16_t word) {
-    return extract_agc_bits_reversed(word, 6, 8);
+    return extract_agc_bits(word, 6, 8);
 }
 
 // Helper: Extract 12-bit address (AGC bits 4-15) for whole codes
-// Note: Uses bit reversal to get correct AGC numeric value
 static inline uint16_t moond_extract_addr_12(uint16_t word) {
-    return extract_agc_bits_reversed(word, 4, 15);
+    return extract_agc_bits(word, 4, 15);
 }
 
 // Helper: Extract 9-bit address (AGC bits 7-15) for channel instructions
-// Note: Uses bit reversal to get correct AGC numeric value
 static inline uint16_t moond_extract_addr_9(uint16_t word) {
-    return extract_agc_bits_reversed(word, 7, 15);
+    return extract_agc_bits(word, 7, 15);
 }
 
 // Helper: Extract 7-bit address (AGC bits 9-15) for quarter codes
-// Note: Uses bit reversal to get correct AGC numeric value
 static inline uint16_t moond_extract_addr_7(uint16_t word) {
-    return extract_agc_bits_reversed(word, 9, 15);
+    return extract_agc_bits(word, 9, 15);
 }

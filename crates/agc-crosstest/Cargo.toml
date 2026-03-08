@@ -1,0 +1,11 @@
+[package]
+name = "agc-crosstest"
+version = "0.1.0"
+edition = "2021"
+description = "Cross-tests: verifies C and Rust AGC Block-2 encoder/decoder agree"
+
+[dev-dependencies]
+moond-sys = { path = "../moond-sys" }
+agc-isa = { path = "../agc-isa" }
+agc-interp = { path = "../agc-interp" }
+agc-asm = { path = "../agc-asm" }

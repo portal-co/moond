@@ -132,22 +132,29 @@ moond_encode_result moond_encode_instr(const moond_instr* instr) {
     }
     
     // Encode based on opcode size and quarter code
-    // Note: Using bit reversal to properly encode AGC numeric values
+    // TEMPORARY: Bit reversal DISABLED — using insert_agc_bits (no reversal) so
+    // the wire format matches the Rust agc-interp encoder for cross-language testing.
+    // TODO: make reversal a runtime flag after assembler/disassembler/cross-tests land.
     if (entry->opcode_bits == 3) {
         // 3-bit whole code: AGC bits 1-3 = opcode, bits 4-15 = address (12 bits)
-        result.word = insert_agc_bits_reversed(0, entry->opcode, 1, 3);
-        result.word = insert_agc_bits_reversed(result.word, address & 0x0FFF, 4, 15);
+        result.word = insert_agc_bits(0, entry->opcode, 1, 3);
+        result.word = insert_agc_bits(result.word, address & 0x0FFF, 4, 15);
     } else if (entry->opcode_bits == 5) {
         // 5-bit quarter code: AGC bits 1-5 = opcode, bits 6-8 = quarter, bits 9-15 = address (7 bits)
-        result.word = insert_agc_bits_reversed(0, entry->opcode, 1, 5);
+        result.word = insert_agc_bits(0, entry->opcode, 1, 5);
         if (entry->quarter_code != 0xff) {
-            result.word = insert_agc_bits_reversed(result.word, entry->quarter_code, 6, 8);
+            // Use the actual quarter from the decoded instruction when it carries a valid
+            // quarter (e.g. BZF/BZMF/TCF can use quarters 2, 4, or 6). Fall back to the
+            // table's default quarter only when the instruction has no recorded quarter.
+            uint8_t qtr = (instr->quarter_code != 0xff) ? instr->quarter_code
+                                                         : entry->quarter_code;
+            result.word = insert_agc_bits(result.word, qtr, 6, 8);
         }
-        result.word = insert_agc_bits_reversed(result.word, address & 0x7F, 9, 15);
+        result.word = insert_agc_bits(result.word, address & 0x7F, 9, 15);
     } else if (entry->opcode_bits == 6) {
         // 6-bit channel: AGC bits 1-6 = opcode, bits 7-15 = channel address (9 bits)
-        result.word = insert_agc_bits_reversed(0, entry->opcode, 1, 6);
-        result.word = insert_agc_bits_reversed(result.word, address & 0x01FF, 7, 15);
+        result.word = insert_agc_bits(0, entry->opcode, 1, 6);
+        result.word = insert_agc_bits(result.word, address & 0x01FF, 7, 15);
     } else {
         result.error = "Invalid opcode bit width";
         return result;

@@ -1,8 +1,20 @@
 # Bit Reversal Decision for AGC Block-2
 
-> Date: 2026-01-31  
-> Status: **IMPLEMENTING BIT REVERSAL**  
+> Date: 2026-01-31
+> Status: **TEMPORARILY DISABLED (2026-03-08)** — see note below
+> Original status: IMPLEMENTING BIT REVERSAL
 > Reason: Empirical evidence of opcode collisions without reversal
+
+## Temporary Disable Note (2026-03-08)
+
+Bit reversal has been **temporarily disabled** in `include/decode.h` and `src/encode.c`
+so that the C wire format matches the Rust `agc-interp` implementation. This enables
+cross-language round-trip testing between the C and Rust assemblers/disassemblers.
+
+**TODO**: After the assembler, disassembler, and cross-tests are created, migrate bit
+reversal to a **runtime flag** (e.g., `bool use_bit_reversal` on the encoder/decoder
+context) rather than a compile-time switch. The original reversal rationale below still
+stands and will need resolution when the flag is introduced.
 
 ## Decision
 
