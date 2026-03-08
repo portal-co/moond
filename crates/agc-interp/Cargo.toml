@@ -1,0 +1,10 @@
+[package]
+name = "agc-interp"
+version = "0.1.0"
+edition = "2021"
+description = "AGC Block-2 interpreter with parseable instruction specification"
+
+# No external dependencies — parsing and execution use only std
+
+[dev-dependencies]
+# none
