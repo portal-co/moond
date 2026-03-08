@@ -1,0 +1,10 @@
+[package]
+name = "agc-recompile"
+version = "0.1.0"
+edition = "2021"
+description = "AGC Block-2 → C recompiler (via TC2 bytecode frontend)"
+
+[dependencies]
+agc-isa    = { path = "../agc-isa" }
+agc-interp = { path = "../agc-interp" }
+agc-lower  = { path = "../agc-lower" }
