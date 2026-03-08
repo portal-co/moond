@@ -170,7 +170,7 @@ impl Backend for CBackend {
     type Output = String;
     type Error = String;
 
-    fn emit(&self, stream: &InstrStream) -> Result<String, String> {
+    fn emit(&mut self, stream: &InstrStream) -> Result<String, String> {
         let mut out = String::new();
 
         if self.options.inline_runtime {

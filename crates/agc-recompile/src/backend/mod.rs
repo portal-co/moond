@@ -1,6 +1,7 @@
 //! Backend abstraction for the AGC recompiler.
 
 pub mod c;
+pub mod wasm;
 
 use crate::ir::InstrStream;
 
@@ -12,5 +13,5 @@ pub trait Backend {
     type Output;
     type Error: core::fmt::Display;
 
-    fn emit(&self, stream: &InstrStream) -> Result<Self::Output, Self::Error>;
+    fn emit(&mut self, stream: &InstrStream) -> Result<Self::Output, Self::Error>;
 }

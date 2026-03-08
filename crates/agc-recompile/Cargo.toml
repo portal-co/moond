@@ -2,9 +2,11 @@
 name = "agc-recompile"
 version = "0.1.0"
 edition = "2021"
-description = "AGC Block-2 → C recompiler (via TC2 bytecode frontend)"
+description = "AGC Block-2 → C/WASM recompiler (via TC2 bytecode frontend)"
 
 [dependencies]
 agc-isa    = { path = "../agc-isa" }
 agc-interp = { path = "../agc-interp" }
 agc-lower  = { path = "../agc-lower" }
+yecta      = { path = "../../../speet/crates/helper/yecta" }
+wasm-encoder = { version = "0.240.0", default-features = false, features = ["wasmparser"] }
