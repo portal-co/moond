@@ -51,10 +51,12 @@ dependencies = [
 name = "agc-recompile"
 version = "0.1.0"
 dependencies = [
+ "agc-asm",
  "agc-interp",
  "agc-isa",
  "agc-lower",
  "wasm-encoder",
+ "wasmparser",
  "yecta",
 ]
 
@@ -349,6 +351,7 @@ checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
 [[package]]
 name = "yecta"
 version = "0.1.0"
+source = "git+https://github.com/portal-co/speet.git?rev=d46ca7df9428ed1fe9571632d8a6900938f700a6#d46ca7df9428ed1fe9571632d8a6900938f700a6"
 dependencies = [
  "wasm-encoder",
  "wax-core",

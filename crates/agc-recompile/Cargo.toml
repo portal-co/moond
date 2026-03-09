@@ -8,5 +8,9 @@ description = "AGC Block-2 → C/WASM recompiler (via TC2 bytecode frontend)"
 agc-isa    = { path = "../agc-isa" }
 agc-interp = { path = "../agc-interp" }
 agc-lower  = { path = "../agc-lower" }
-yecta      = { path = "../../../speet/crates/helper/yecta" }
+yecta        = { git = "https://github.com/portal-co/speet.git", rev = "d46ca7df9428ed1fe9571632d8a6900938f700a6" }
 wasm-encoder = { version = "0.240.0", default-features = false, features = ["wasmparser"] }
+
+[dev-dependencies]
+agc-asm      = { path = "../agc-asm" }
+wasmparser   = { version = "0.240.0", default-features = false, features = ["validate", "features"] }

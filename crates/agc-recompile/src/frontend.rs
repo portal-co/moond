@@ -18,6 +18,7 @@ use agc_isa::{builtin_spec_set, InstrType, SemOp};
 use agc_interp::decode::decode;
 use agc_lower::lower_sem;
 
+use crate::backend::DirectInstr;
 use crate::ir::{BasicBlock, InstrRecord, InstrStream, Terminator};
 
 // ─── Error ────────────────────────────────────────────────────────────────────
@@ -163,7 +164,7 @@ pub fn decode_stream(
 
 // ─── Terminator classification ────────────────────────────────────────────────
 
-fn classify_terminator(
+pub(crate) fn classify_terminator(
     instr_type: InstrType,
     ops: &[SemOp],
     pc: u16,
@@ -267,5 +268,63 @@ fn static_branch_target(
 fn make_indirect(indirect_targets: &BTreeSet<u16>) -> Terminator {
     Terminator::Indirect {
         possible_targets: indirect_targets.iter().copied().collect(),
+    }
+}
+
+// ─── Direct backend helper ────────────────────────────────────────────────────
+
+/// Decode one AGC instruction at `addr` in the given `extend` state and
+/// return a [`DirectInstr`] ready to feed into a [`crate::backend::DirectBackend`].
+///
+/// Called once per `(addr, extend)` pair by callers of direct backends.
+/// The AGC address space is 12-bit (0x000–0xFFF); `addr` is silently masked.
+///
+/// On decode failure (e.g. an extracode opcode with no spec entry) the
+/// returned record has `instr_type = None`, empty `bytecode`, and
+/// `terminator = Terminator::Halt`.
+pub fn decode_direct(
+    memory: &[u16; 4096],
+    addr: u16,
+    extend: bool,
+    indirect_targets: &BTreeSet<u16>,
+) -> DirectInstr {
+    let specs = builtin_spec_set();
+    let raw_word = memory[addr as usize & 0x0FFF] & 0x7FFF;
+    let next_pc = addr.wrapping_add(1) & 0x7FFF;
+
+    match decode(raw_word, extend, &specs) {
+        Ok(decoded) => {
+            let instr_type = decoded.spec.instr_type;
+            let operand = decoded.address;
+            let ops: Vec<SemOp> = decoded.spec.semantics.clone().unwrap_or_default();
+            let bytecode = lower_sem(operand, &ops);
+            let terminator = classify_terminator(
+                instr_type,
+                &ops,
+                addr,
+                next_pc,
+                operand,
+                memory,
+                indirect_targets,
+            );
+            DirectInstr {
+                addr,
+                extend,
+                raw_word,
+                instr_type: Some(instr_type),
+                operand,
+                bytecode,
+                terminator,
+            }
+        }
+        Err(_) => DirectInstr {
+            addr,
+            extend,
+            raw_word,
+            instr_type: None,
+            operand: 0,
+            bytecode: alloc::vec![],
+            terminator: Terminator::Halt,
+        },
     }
 }

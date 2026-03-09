@@ -1,17 +1,75 @@
 //! Backend abstraction for the AGC recompiler.
+//!
+//! ## Two backend families
+//!
+//! ### Block-based (`Backend`)
+//! Consumes a fully-decoded [`InstrStream`] (basic-block IR with liveness
+//! already computed by the frontend).  The C backend lives here.  Future SSA /
+//! waffle WASM backends will too.
+//!
+//! ### Direct (`DirectBackend`)
+//! Receives pre-parsed instructions one-at-a-time in a fixed order: all 4096
+//! AGC addresses × 2 EXTEND states, fed as `(addr=0, ext=false)`,
+//! `(addr=0, ext=true)`, `(addr=1, ext=false)`, … The yecta WASM backend
+//! lives here.  No liveness analysis is done; the host toolchain / yecta
+//! cycle detection handles DCE.
 
 pub mod c;
 pub mod wasm;
 
-use crate::ir::InstrStream;
+use alloc::vec::Vec;
 
-/// A backend converts an [`InstrStream`] into a target representation.
-///
-/// The associated types allow backends to return whatever output format they
-/// need (e.g. `String` for source-code backends, `Vec<u8>` for binary backends).
+use agc_isa::InstrType;
+
+use crate::ir::{InstrStream, Terminator};
+
+// ─── Block-based backend ──────────────────────────────────────────────────────
+
+/// A backend that consumes a fully-decoded [`InstrStream`].
 pub trait Backend {
     type Output;
     type Error: core::fmt::Display;
 
     fn emit(&mut self, stream: &InstrStream) -> Result<Self::Output, Self::Error>;
+}
+
+// ─── Direct backend ───────────────────────────────────────────────────────────
+
+/// One pre-parsed AGC instruction in a specific EXTEND state, ready for a
+/// direct backend to consume without further decoding.
+///
+/// Instructions must be fed to a [`DirectBackend`] in strict address order:
+/// `(addr=0, ext=false)`, `(addr=0, ext=true)`, `(addr=1, ext=false)`, …
+#[derive(Clone)]
+pub struct DirectInstr {
+    /// AGC 12-bit address.
+    pub addr: u16,
+    /// EXTEND state when this instruction was decoded.
+    pub extend: bool,
+    /// Raw 15-bit word at this address (used for the INSTR_WORD register).
+    pub raw_word: u16,
+    /// Decoded instruction type; `None` if the word could not be decoded in
+    /// this EXTEND state.
+    pub instr_type: Option<InstrType>,
+    /// Effective operand / address field extracted from the instruction word.
+    pub operand: u16,
+    /// Pre-lowered TC2 16-bit stack bytecode for this instruction.
+    pub bytecode: Vec<u16>,
+    /// How control leaves this instruction.
+    pub terminator: Terminator,
+}
+
+/// A streaming direct backend.
+///
+/// Instructions MUST be fed in the exact order described on [`DirectInstr`].
+/// After all 4096 × 2 = 8192 instructions have been fed, call [`finish`] to
+/// obtain the compiled output.
+///
+/// [`finish`]: DirectBackend::finish
+pub trait DirectBackend {
+    type Output;
+    type Error: core::fmt::Display;
+
+    fn feed_instr(&mut self, instr: &DirectInstr) -> Result<(), Self::Error>;
+    fn finish(self) -> Result<Self::Output, Self::Error>;
 }
