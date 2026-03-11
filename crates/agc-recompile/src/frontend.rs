@@ -81,7 +81,7 @@ pub fn decode_stream(
         let mut instrs: Vec<InstrRecord> = Vec::new();
         let mut pc: u16 = start;
         let mut extend: bool = start_extend;
-        let mut terminator;
+        let terminator;
 
         let mut visited = BTreeSet::new();
 
