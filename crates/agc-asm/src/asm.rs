@@ -14,9 +14,15 @@ fn encode_word(spec: &agc_isa::InstrSpec, addr: u16) -> Result<u16, String> {
             (spec.opcode as u16) << 12 | (addr & 0x0FFF)
         }
         OpcodeFormat::Quarter5 => {
-            (spec.opcode as u16) << 10
-                | ((spec.quarter.unwrap_or(0) as u16) << 7)
-                | (addr & 0x007F)
+            // NDX uses a 10-bit address field for addresses > 0o177 (7-bit max):
+            //   opcode 0o15 with bits [9:7] embedded in the quarter position.
+            if spec.instr_type == InstrType::Ndx && addr > 0o177 {
+                (0o15u16 << 10) | (addr & 0x03FF)
+            } else {
+                (spec.opcode as u16) << 10
+                    | ((spec.quarter.unwrap_or(0) as u16) << 7)
+                    | (addr & 0x007F)
+            }
         }
         OpcodeFormat::Channel6 => {
             // Channel instructions: opc6=0o10, then bits [8:6] of addr9 hold
@@ -194,5 +200,43 @@ mod tests {
         // GO → TC 0o4000
         let g = assemble("GO").unwrap();
         assert_eq!(g[0], 0o004000);
+    }
+
+    /// NDX auto-prepends EXTEND (requires_extend=true).
+    #[test]
+    fn ndx_auto_extends() {
+        let words = assemble("NDX 0o010").unwrap();
+        assert_eq!(words.len(), 2, "NDX must emit EXTEND + NDX word");
+        assert_eq!(words[0], EXTEND_WORD);
+    }
+
+    /// NDX with address ≤ 0o177 uses opcode 0o05 (7-bit erasable form).
+    #[test]
+    fn ndx_7bit_uses_opcode05() {
+        use agc_interp::decode::decode;
+        use agc_isa::builtin_spec_set;
+        use agc_isa::InstrType;
+        let words = assemble("NDX 0o077").unwrap();
+        assert_eq!(words.len(), 2);
+        let ndx_word = words[1];
+        let s = builtin_spec_set();
+        let d = decode(ndx_word, true, &s).unwrap();
+        assert_eq!(d.spec.instr_type, InstrType::Ndx);
+        assert_eq!(d.address, 0o077);
+    }
+
+    /// NDX with address > 0o177 uses opcode 0o15 (10-bit wide form).
+    #[test]
+    fn ndx_10bit_uses_opcode15() {
+        use agc_interp::decode::decode;
+        use agc_isa::builtin_spec_set;
+        use agc_isa::InstrType;
+        let words = assemble("NDX 0o355").unwrap();
+        assert_eq!(words.len(), 2);
+        let ndx_word = words[1];
+        let s = builtin_spec_set();
+        let d = decode(ndx_word, true, &s).unwrap();
+        assert_eq!(d.spec.instr_type, InstrType::Ndx);
+        assert_eq!(d.address, 0o355, "10-bit round-trip failed");
     }
 }

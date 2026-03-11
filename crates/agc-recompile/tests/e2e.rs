@@ -284,3 +284,48 @@ fn both_backends_accept_multi_instruction_program() {
     validate_wasm(&wasm);
     compile_c(&c);
 }
+
+// ─── NDX (index) constant-folding tests ──────────────────────────────────────
+
+/// NDX with an erasable operand cannot be constant-folded; the frontend must
+/// fall back to an Indirect terminator.
+///
+/// NDX always requires EXTEND, so `asm("NDX 0o0010")` emits two words:
+///   0o4000 = EXTEND
+///   0o4001 = NDX word (K=0o0010, erasable → slicer returns None)
+///   0o4002 = TCF 0o4004  (next instruction; its own block)
+///   0o4004 = TCF 0o4004  (self-loop)
+#[test]
+fn c_ndx_erasable_falls_back_to_indirect() {
+    let mut img = blank_image();
+    // asm("NDX 0o0010") auto-prepends EXTEND → 2 words at 0o4000–0o4001.
+    place(&mut img, 0o4000, &asm("NDX 0o0010"));
+    // Next instruction after NDX is at 0o4002.
+    place(&mut img, 0o4002, &asm("TCF 0o4004"));
+    place(&mut img, 0o4004, &asm("TCF 0o4004"));
+
+    // Indirect targets: the instruction following NDX and the self-loop target.
+    let mut indirect_targets = BTreeSet::new();
+    indirect_targets.insert(0o4002u16);
+    indirect_targets.insert(0o4004u16);
+
+    let stream = decode_stream(&img, &[0o4000], indirect_targets)
+        .unwrap_or_else(|e| panic!("frontend error: {e}"));
+
+    assert!(stream.blocks.contains_key(&0o4000), "entry block 0o4000 missing");
+    let block = &stream.blocks[&0o4000];
+
+    // Block contains EXTEND + NDX (both are InstrRecords).
+    assert_eq!(
+        block.instrs.len(), 2,
+        "expected EXTEND + NDX in block, got {} instrs", block.instrs.len()
+    );
+
+    // Terminator must be Indirect (erasable K cannot be folded).
+    assert!(
+        matches!(block.terminator, Terminator::Indirect { .. }),
+        "expected Indirect, got {:?}", block.terminator
+    );
+
+    compile_c(&CBackend::default().emit(&stream).unwrap());
+}

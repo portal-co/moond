@@ -23,6 +23,7 @@ extern crate alloc;
 pub mod ir;
 pub mod frontend;
 pub mod backend;
+pub mod slicer;
 
 pub use ir::{BasicBlock, InstrRecord, InstrStream, Terminator};
 pub use frontend::{FrontendError, decode_stream, decode_direct};

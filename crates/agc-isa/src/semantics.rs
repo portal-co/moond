@@ -35,6 +35,8 @@ pub enum Dest {
     MemAt(u16),
     /// Memory cell at the address computed by eval(expr) — for NDX.
     Deref(Box<Expr>),
+    /// Virtual next-instruction override register (0xFF04); set by NDX.
+    NextInstr,
 }
 
 // ─── Value expressions ────────────────────────────────────────────────────────
@@ -178,6 +180,7 @@ impl fmt::Display for Dest {
             Dest::Channel     => f.write_str("chan"),
             Dest::MemAt(a)    => write!(f, "mem_at({:#o})", a),
             Dest::Deref(e)    => write!(f, "deref({e})"),
+            Dest::NextInstr   => f.write_str("next_instr"),
         }
     }
 }

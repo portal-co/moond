@@ -101,6 +101,7 @@ static inline uint16_t agc_vm_read(AgcState *s, uint16_t addr) {
         case 0xFF01U: return (uint16_t)s->extend;
         case 0xFF02U: return (uint16_t)s->inhint;
         case 0xFF03U: return s->instr_word;
+        case 0xFF04U: return 0U;            /* next_instr — compile-time only */
         default:
             if (addr >= 0x8000U && addr < 0x8200U)
                 return s->chan_read(s, (uint16_t)(addr - 0x8000U));
@@ -122,6 +123,7 @@ static inline void agc_vm_write(AgcState *s, uint16_t addr, uint16_t val) {
         case 0xFF01U: s->extend     = (uint8_t)val; return;
         case 0xFF02U: s->inhint     = (uint8_t)val; return;
         case 0xFF03U: s->instr_word = val;      return;
+        case 0xFF04U:                           return; /* next_instr — compile-time only */
         default:
             if (addr >= 0x8000U && addr < 0x8200U)
                 s->chan_write(s, (uint16_t)(addr - 0x8000U), val);

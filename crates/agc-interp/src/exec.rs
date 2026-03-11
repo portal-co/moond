@@ -158,6 +158,8 @@ pub fn write_dest(cpu: &mut Cpu, dest: &Dest, val: u16, operand: u16) {
             let addr = eval_dest_addr(cpu, operand, e);
             cpu.mem_write(addr, val & 0x7FFF);
         }
+        // In the interpreter, NDX physically writes the modified word to memory[Z].
+        Dest::NextInstr => cpu.mem_write(cpu.z, val & 0x7FFF),
     }
 }
 

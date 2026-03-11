@@ -105,9 +105,9 @@ pub fn builtin_spec_set() -> InstrSpecSet {
                     set L tmp")),
 
         // ── Modifying ──────────────────────────────────────────────────────
-        spec!("NDX", InstrType::Ndx, AddrMode::K, Quarter5, 0o05, Some(0), false,
+        spec!("NDX", InstrType::Ndx, AddrMode::K, Quarter5, 0o05, Some(0), true,
               "Index next instruction",
-              Some("set tmp mem\nset deref(Z) oc_add(deref(Z),tmp)")),
+              Some("set tmp mem\nset next_instr oc_add(deref(Z),tmp)")),
 
         // ── Arithmetic and logic ───────────────────────────────────────────
         spec!("AD", InstrType::Ad, AddrMode::K, Whole3, 0o06, None, false,

@@ -36,6 +36,8 @@ pub mod addr {
     pub const EXTEND:      u16 = 0xFF01;
     pub const INHINT:      u16 = 0xFF02;
     pub const INSTR_WORD:  u16 = 0xFF03;
+    /// Virtual next-instruction override; set by NDX; sunk at runtime in the C backend.
+    pub const NEXT_INSTR:  u16 = 0xFF04;
     /// I/O channel N maps to `CHAN_BASE + N` (N: 0–511).
     pub const CHAN_BASE:   u16 = 0x8000;
 }

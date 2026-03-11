@@ -59,6 +59,14 @@ pub fn lower_sem(operand: u16, ops: &[SemOp]) -> Vec<u16> {
     for op in ops {
         lower_op(&mut b, op);
     }
+    // Default next_instr epilogue: if no SemOp already set next_instr (like NDX
+    // does), emit `memory[Z]` so the slicer always has a consistent STORE15(0xFF04)
+    // at the end of every fall-through path.
+    if !b.has_next_instr {
+        b.emit(Instr::Load(addr::Z));
+        b.emit(Instr::LoadInd);
+        b.emit(Instr::Store15(addr::NEXT_INSTR));
+    }
     b.emit(Instr::Ret);
     b.finish()
 }
@@ -68,10 +76,13 @@ pub fn lower_sem(operand: u16, ops: &[SemOp]) -> Vec<u16> {
 /// Bytecode builder with forward-jump patching support.
 struct Builder {
     words: Vec<u16>,
+    /// Set to `true` when `Dest::NextInstr` has been lowered; suppresses the
+    /// default `memory[Z]` epilogue in `lower_sem`.
+    has_next_instr: bool,
 }
 
 impl Builder {
-    fn new() -> Self { Builder { words: Vec::new() } }
+    fn new() -> Self { Builder { words: Vec::new(), has_next_instr: false } }
 
     fn emit(&mut self, instr: Instr) { instr.encode(&mut self.words); }
 
@@ -326,6 +337,10 @@ fn lower_dest(b: &mut Builder, dest: &Dest) {
             lower_expr(b, inner); // push addr (on top now)
             // Stack: [..., val, addr]  — StoreInd pops addr then val.
             b.emit(Instr::StoreInd);
+        }
+        Dest::NextInstr => {
+            b.emit(Instr::Store15(addr::NEXT_INSTR));
+            b.has_next_instr = true;
         }
     }
 }

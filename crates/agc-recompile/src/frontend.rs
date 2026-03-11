@@ -20,6 +20,7 @@ use agc_lower::lower_sem;
 
 use crate::backend::DirectInstr;
 use crate::ir::{BasicBlock, InstrRecord, InstrStream, Terminator};
+use crate::slicer::slice_next_instr;
 
 // ─── Error ────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,9 @@ pub fn decode_stream(
         let mut instrs: Vec<InstrRecord> = Vec::new();
         let mut pc: u16 = start;
         let mut extend: bool = start_extend;
+        // Set by NDX constant-folding: the modified raw word for the next
+        // instruction decode iteration (mirrors the EXTEND absorb pattern).
+        let mut next_instr_override: Option<u16> = None;
         let terminator;
 
         let mut visited = BTreeSet::new();
@@ -93,7 +97,10 @@ pub fn decode_stream(
                 break 'block;
             }
 
-            let raw_word = memory[pc as usize & 0x0FFF] & 0x7FFF;
+            // Use the NDX override if set, otherwise read directly from memory.
+            let raw_word = next_instr_override
+                .take()
+                .unwrap_or_else(|| memory[pc as usize & 0x0FFF] & 0x7FFF);
 
             let decoded = decode(raw_word, extend, &specs).map_err(|e| FrontendError {
                 address: pc,
@@ -130,6 +137,19 @@ pub fn decode_stream(
                 extend = true;
                 pc = next_pc;
                 continue 'block;
+            }
+
+            // NDX constant-folding: if the slicer can determine the modified
+            // next-instruction word at compile time, absorb NDX into the block
+            // (like EXTEND) so the next instruction is decoded with the override.
+            if instr_type == InstrType::Ndx {
+                let bytecode = &instrs.last().expect("just pushed").bytecode;
+                if let Some(modified_word) = slice_next_instr(bytecode, memory, next_pc) {
+                    next_instr_override = Some(modified_word);
+                    pc = next_pc;
+                    continue 'block;
+                }
+                // Slicer returned None — fall through to make_indirect below.
             }
 
             // Reset extend state (for any potential future loop continuation).

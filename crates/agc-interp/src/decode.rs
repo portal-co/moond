@@ -50,6 +50,8 @@ fn addr_12(w: u16) -> u16 { w & 0x0FFF }
 fn addr_9(w: u16) -> u16 { w & 0x01FF }
 #[inline]
 fn addr_7(w: u16) -> u16 { w & 0x007F }
+#[inline]
+fn addr_10(w: u16) -> u16 { w & 0x03FF }
 
 // ─── Decoder ─────────────────────────────────────────────────────────────────
 
@@ -104,7 +106,7 @@ pub fn decode<'s>(
             (0o12, 6) => return lookup(specs, InstrType::Dim,  a7, word, extend),
             (0o13, _) => return lookup(specs, InstrType::Dca, a7, word, extend),
             (0o14, _) => return lookup(specs, InstrType::Dcs, a7, word, extend),
-            (0o15, _) => return lookup(specs, InstrType::Ndx, a7, word, extend),
+            (0o15, _) => return lookup(specs, InstrType::Ndx, addr_10(word), word, extend),
             (0o16, 2) | (0o16, 4) | (0o16, 6) => return lookup(specs, InstrType::Bzf, a7, word, extend),
             (0o16, 0) => return lookup(specs, InstrType::Su, a7, word, extend),
             (0o17, _) => return lookup(specs, InstrType::Mp, a7, word, extend),
@@ -255,5 +257,26 @@ mod tests {
         let d = decode(w, true, &s).unwrap();
         assert_eq!(d.spec.instr_type, InstrType::Read);
         assert_eq!(d.address, 0o030);
+    }
+
+    /// NDX erasable form (0o05, qtr=0): 7-bit address.
+    #[test]
+    fn decode_ndx_erasable_7bit() {
+        let s = specs();
+        let w = encode_quarter(0o05, 0, 0o077);
+        let d = decode(w, true, &s).unwrap();
+        assert_eq!(d.spec.instr_type, InstrType::Ndx);
+        assert_eq!(d.address, 0o077);
+    }
+
+    /// NDX wide form (0o15, any quarter): 10-bit address with quarter bits folded in.
+    #[test]
+    fn decode_ndx_wide_10bit() {
+        let s = specs();
+        // Encode opcode=0o15, qtr=3, addr7=0o055 → 10-bit addr = (3<<7)|0o055 = 0o355
+        let w = encode_quarter(0o15, 3, 0o055);
+        let d = decode(w, true, &s).unwrap();
+        assert_eq!(d.spec.instr_type, InstrType::Ndx);
+        assert_eq!(d.address, (3u16 << 7) | 0o055, "expected 10-bit address");
     }
 }

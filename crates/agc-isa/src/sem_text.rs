@@ -95,8 +95,9 @@ fn parse_dest(s: &str) -> Result<Dest, &'static str> {
         "tmp"     => return Ok(Dest::Tmp),
         "mem"     => return Ok(Dest::Mem),
         "mem_hi"  => return Ok(Dest::MemHi),
-        "chan"     => return Ok(Dest::Channel),
-        _         => {}
+        "chan"       => return Ok(Dest::Channel),
+        "next_instr" => return Ok(Dest::NextInstr),
+        _            => {}
     }
     // Function-form destinations: mem_at(N) or deref(expr)
     if let Some(paren) = s.find('(') {
