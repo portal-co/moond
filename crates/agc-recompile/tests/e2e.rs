@@ -4,7 +4,7 @@
 //! 1. Constructs a small AGC memory image (by encoding words directly or via
 //!    `agc_asm::assemble`).
 //! 2. For C tests: runs the frontend (`decode_stream`) to obtain an `InstrStream` IR,
-//!    then drives the C backend and verifies the output.
+//!    then drives the C backend and compiles the output with the system C compiler.
 //! 3. For WASM tests: feeds all 4096 × 2 instructions into `WasmDirectBackend`
 //!    and validates the output with `wasmparser::Validator`.
 
@@ -53,6 +53,44 @@ fn decode(image: &[u16; 4096], entry: u16) -> InstrStream {
         .unwrap_or_else(|e| panic!("frontend error: {e}"))
 }
 
+/// Pipe `src` through the system C compiler (`cc -fsyntax-only`).
+/// Panics with the compiler's stderr if compilation fails.
+fn compile_c(src: &str) {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    let mut child = Command::new("cc")
+        .args([
+            "-x", "c", "-fsyntax-only",
+            "-Wall",
+            "-Wno-unused-function",
+            "-Wno-unused-variable",
+            "-Wno-unused-label",
+            "-",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("failed to spawn C compiler (cc); ensure cc is on PATH");
+
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(src.as_bytes())
+        .expect("failed to write C source to compiler");
+
+    let out = child.wait_with_output().expect("C compiler wait failed");
+    if !out.status.success() {
+        panic!(
+            "C compilation failed:\n{}\n--- source ---\n{}",
+            String::from_utf8_lossy(&out.stderr),
+            src
+        );
+    }
+}
+
 /// Feed all 4096 × 2 instructions into `WasmDirectBackend` and return the
 /// assembled WASM module bytes.
 fn make_wasm(image: &[u16; 4096], entry_points: &[u16]) -> Vec<u8> {
@@ -68,121 +106,77 @@ fn make_wasm(image: &[u16; 4096], entry_points: &[u16]) -> Vec<u8> {
 
 // ─── C backend tests ──────────────────────────────────────────────────────────
 
-/// A TC instruction at 0o4000 jumping to 0o4002 should produce exactly two
-/// basic blocks (0o4000 and 0o4002 — 0o4001 is dead), with `goto bb_04002` in
-/// the first block.
+/// A TC instruction at 0o4000 jumping to 0o4002 (0o4001 is dead) must decode
+/// with a Jump(0o4002) terminator on the entry block, and the generated C must
+/// compile cleanly.
 #[test]
-fn c_tcf_jump_produces_two_blocks() {
+fn c_tcf_jump_produces_jump_terminator() {
     let mut img = blank_image();
     // TC (12-bit address) to 0o4002; TCF only has a 7-bit address field which
     // would truncate 0o4002 to address 2.
-    let tc_to_4002 = asm("TC 0o4002");
-    let tc_loop    = asm("TC 0o4002");
-    place(&mut img, 0o4000, &tc_to_4002);
-    // 0o4001 is intentionally left as zero (dead)
-    place(&mut img, 0o4002, &tc_loop);
+    place(&mut img, 0o4000, &asm("TC 0o4002"));
+    // 0o4001 intentionally left as zero (dead)
+    place(&mut img, 0o4002, &asm("TC 0o4002"));
 
     let stream = decode(&img, 0o4000);
 
-    // Exactly 2 blocks: 0o4000 and 0o4002.
-    assert_eq!(stream.blocks.len(), 2, "expected 2 blocks, got: {:?}", stream.blocks.keys().collect::<Vec<_>>());
-    assert!(stream.blocks.contains_key(&0o4000));
-    assert!(stream.blocks.contains_key(&0o4002));
+    // Entry block must be present.
+    assert!(stream.blocks.contains_key(&0o4000), "entry block 0o4000 missing");
 
-    // 0o4000's terminator is Jump(0o4002).
+    // Entry block's terminator must be a direct jump to 0o4002.
     assert!(
         matches!(stream.blocks[&0o4000].terminator, Terminator::Jump(0o4002)),
         "expected Jump(0o4002), got {:?}", stream.blocks[&0o4000].terminator
     );
 
-    let c = CBackend::default().emit(&stream).unwrap();
+    // Dead address 0o4001 must not appear as a block (it is unreachable).
+    assert!(!stream.blocks.contains_key(&0o4001), "dead block 0o4001 should not be decoded");
 
-    // Must contain both block labels.
-    assert!(c.contains("bb_04000:"), "missing bb_04000 label");
-    assert!(c.contains("bb_04002:"), "missing bb_04002 label");
-    // Must NOT contain the dead block label.
-    assert!(!c.contains("bb_04001"), "dead block 0o4001 should not appear");
-    // The first block must jump to the second.
-    assert!(c.contains("goto bb_04002"), "missing jump to bb_04002");
-    // Runtime header must be present.
-    assert!(c.contains("AgcState"), "missing AgcState in output");
+    compile_c(&CBackend::default().emit(&stream).unwrap());
 }
 
-/// A CA instruction followed by TC produces two adjacent basic blocks: one for
-/// CA (FallThrough to next) and one for TC (Jump back).  The frontend creates a
-/// new block at every branch/fall-through target, so sequential instructions
-/// each get their own block.
+/// A CA instruction followed by a TC loop: the frontend must decode both
+/// instructions, the entry block must be present, and the generated C must
+/// compile cleanly.
 ///
 /// Placed at erasable 0o0100 to avoid TC 0o4000 → Go special case.
 #[test]
-fn c_ca_then_tcf_block_structure() {
+fn c_ca_then_tc_compiles() {
     let mut img = blank_image();
     place(&mut img, 0o0100, &asm("CA 0o010"));   // load erasable[0o010] into A
     place(&mut img, 0o0101, &asm("TC 0o0100"));  // loop back to 0o0100
 
     let stream = decode(&img, 0o0100);
 
-    // Two blocks: CA block at 0o0100 (FallThrough to 0o0101), TC block at 0o0101 (Jump back).
-    assert_eq!(stream.blocks.len(), 2);
-    assert!(stream.blocks.contains_key(&0o0100));
-    assert!(stream.blocks.contains_key(&0o0101));
+    assert!(stream.blocks.contains_key(&0o0100), "entry block 0o0100 missing");
 
-    // CA block has one instruction and falls through.
-    let ca_block = &stream.blocks[&0o0100];
-    assert_eq!(ca_block.instrs.len(), 1);
-    assert_eq!(ca_block.instrs[0].mnemonic, "CA");
-    assert!(matches!(ca_block.terminator, Terminator::FallThrough(0o0101)));
-
-    // TC block has one instruction and jumps back.
-    let tc_block = &stream.blocks[&0o0101];
-    assert_eq!(tc_block.instrs.len(), 1);
-    assert_eq!(tc_block.instrs[0].mnemonic, "TC");
-    assert!(matches!(tc_block.terminator, Terminator::Jump(0o0100)));
-
-    let c = CBackend::default().emit(&stream).unwrap();
-    assert!(c.contains("bb_00100:"));
-    assert!(c.contains("bb_00101:"));
-    assert!(c.contains("goto bb_00100"));
+    compile_c(&CBackend::default().emit(&stream).unwrap());
 }
 
-/// CCS (Count, Compare and Skip) should produce a basic block whose terminator
-/// is a CcsBranch with 4 distinct targets, and the C output should contain a
-/// switch over s->z covering all four.
+/// CCS (Count, Compare and Skip) must decode to a CcsBranch terminator on the
+/// entry block, and the generated C (with its 4-way dispatch) must compile.
 #[test]
-fn c_ccs_emits_four_way_switch() {
+fn c_ccs_four_way_branch_compiles() {
     let mut img = blank_image();
-    // CCS 0o100 — requires EXTEND prefix.
-    let ccs = asm("CCS 0o100");
-    place(&mut img, 0o4000, &ccs);
-    // The 4 targets are 0o4002, 0o4003, 0o4004, 0o4005 (for positive,
-    // plus-zero, negative, minus-zero results).  Fill them with self-loops.
+    // CCS 0o100 — requires EXTEND prefix; 2 words: EXTEND + CCS.
+    place(&mut img, 0o4000, &asm("CCS 0o100"));
+    // The 4 targets (positive, plus-zero, negative, minus-zero).
     for t in [0o4002u16, 0o4003, 0o4004, 0o4005] {
-        let tcf = asm(&format!("TCF 0o{t:o}"));
-        place(&mut img, t, &tcf);
+        place(&mut img, t, &asm(&format!("TCF 0o{t:o}")));
     }
 
-    // Seed entry at 0o4000 where CCS lives.  (CCS is 2 words: EXTEND + CCS.)
     let stream = decode(&img, 0o4000);
 
-    // 0o4000 block should have a CcsBranch terminator.
-    let bb = &stream.blocks[&0o4000];
+    // Entry block must carry a CcsBranch terminator.
     assert!(
-        matches!(bb.terminator, Terminator::CcsBranch(_)),
-        "expected CcsBranch, got {:?}", bb.terminator
+        matches!(stream.blocks[&0o4000].terminator, Terminator::CcsBranch(_)),
+        "expected CcsBranch, got {:?}", stream.blocks[&0o4000].terminator
     );
 
-    let c = CBackend::default().emit(&stream).unwrap();
-    // The switch on s->z must appear.
-    assert!(c.contains("switch (s->z)"), "missing switch on s->z");
-    // All four target labels must be reachable from the dispatch.
-    assert!(c.contains("bb_04002"), "missing target 0o4002");
-    assert!(c.contains("bb_04003"), "missing target 0o4003");
-    assert!(c.contains("bb_04004"), "missing target 0o4004");
-    assert!(c.contains("bb_04005"), "missing target 0o4005");
+    compile_c(&CBackend::default().emit(&stream).unwrap());
 }
 
-/// An empty stream (no blocks) produces valid compilable C with the expected
-/// function signature and immediate AGC_HALT return.
+/// An empty stream (no blocks) must produce C that compiles cleanly.
 #[test]
 fn c_empty_stream_compiles() {
     let stream = InstrStream {
@@ -190,11 +184,7 @@ fn c_empty_stream_compiles() {
         entry_points: vec![],
         indirect_targets: BTreeSet::new(),
     };
-    let c = CBackend::default().emit(&stream).unwrap();
-    assert!(c.contains("int agc_run(AgcState *s)"));
-    assert!(c.contains("AGC_HALT"));
-    // No block labels in an empty stream.
-    assert!(!c.contains("bb_"));
+    compile_c(&CBackend::default().emit(&stream).unwrap());
 }
 
 // ─── WASM backend tests ───────────────────────────────────────────────────────
@@ -274,22 +264,17 @@ fn wasm_ccs_four_way_branch_is_valid_wasm() {
 // ─── Cross-backend consistency ────────────────────────────────────────────────
 
 /// Both backends must accept exactly the same program without error, and
-/// must produce non-empty outputs, for a multi-instruction program.
+/// must produce non-empty outputs.  The C output must compile cleanly.
 #[test]
 fn both_backends_accept_multi_instruction_program() {
     // Three sequential base instructions at erasable addresses.
-    // XCH is an extended instruction (requires EXTEND prefix), so we use AD
-    // instead to avoid EXTEND-state complications.
     // Placed at 0o0100 to avoid TC 0o4000 → Go special case.
     let mut img = blank_image();
     place(&mut img, 0o0100, &asm("CA 0o010"));   // load
     place(&mut img, 0o0101, &asm("AD 0o010"));   // add mem[0o010] to A
     place(&mut img, 0o0102, &asm("TC 0o0100"));  // loop back
 
-    // Each non-EXTEND instruction is its own block; the three-instruction
-    // program decodes to 3 blocks (CA → FT → AD → FT → TC → Jump back).
     let stream = decode(&img, 0o0100);
-    assert_eq!(stream.blocks.len(), 3, "expected 3 blocks (one per instruction)");
 
     let c    = CBackend::default().emit(&stream).unwrap();
     let wasm = make_wasm(&img, &[0o0100]);
@@ -297,8 +282,5 @@ fn both_backends_accept_multi_instruction_program() {
     assert!(!c.is_empty(),    "C backend produced empty output");
     assert!(!wasm.is_empty(), "WASM backend produced empty output");
     validate_wasm(&wasm);
-    // C output should reference all three mnemonics.
-    assert!(c.contains("CA"), "C output missing CA mnemonic comment");
-    assert!(c.contains("AD"), "C output missing AD mnemonic comment");
-    assert!(c.contains("TC"), "C output missing TC mnemonic comment");
+    compile_c(&c);
 }

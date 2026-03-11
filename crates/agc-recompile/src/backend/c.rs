@@ -196,13 +196,16 @@ impl Backend for CBackend {
             out.push_str(&format!("bb_{label:05o}:  /* 0o{label:07o} */\n"));
 
             // Emit bytecode translation for each instruction.
-            for rec in &block.instrs {
+            for (seq, rec) in block.instrs.iter().enumerate() {
                 out.push_str(&format!(
                     "    /* 0o{:07o}: {} 0o{:07o} */\n",
                     rec.pc, rec.mnemonic, rec.operand
                 ));
                 let next_pc = (rec.pc + 1) & 0x7FFF;
-                emit_bytecode_block(&rec.bytecode, next_pc, rec.raw_word, &mut out);
+                // Use label as the block disambiguator and seq as the
+                // per-instruction disambiguator so labels stay unique even
+                // when the optimizer duplicates an instruction across blocks.
+                emit_bytecode_block(&rec.bytecode, next_pc, label, seq, rec.raw_word, &mut out);
             }
 
             emit_terminator(&block.terminator, &stream.indirect_targets, &mut out);
@@ -222,9 +225,17 @@ impl Backend for CBackend {
 /// `LOAD(addr::Z)` inside the bytecode (e.g. for PcRel computations) sees
 /// the already-advanced PC.  If the instruction contains a branch, the
 /// bytecode will overwrite `s->z` with the branch target before `RET`.
-fn emit_bytecode_block(code: &[u16], next_pc: u16, raw_word: u16, out: &mut String) {
+///
+/// `block_label` is the owning basic block's AGC address and `seq` is the
+/// zero-based index of this instruction within that block.  Together they
+/// produce unique label names (`_bc_end_{block_label:05o}_{seq}` etc.) even
+/// when the optimizer duplicates the same instruction into multiple blocks.
+fn emit_bytecode_block(code: &[u16], next_pc: u16, block_label: u16, seq: usize, raw_word: u16, out: &mut String) {
     // First pass: collect all word indices that are jump targets.
     let jump_targets = collect_jump_targets(code);
+
+    // Label prefix unique to this (block, instruction-index) pair.
+    let pfx = format!("{block_label:05o}_{seq}");
 
     out.push_str("    {\n");
     // Pre-advance Z to next_pc so Expr::Z (and PcRel) reads are correct.
@@ -238,7 +249,7 @@ fn emit_bytecode_block(code: &[u16], next_pc: u16, raw_word: u16, out: &mut Stri
     while pc < code.len() {
         // Insert label for jump targets.
         if jump_targets.contains(&pc) {
-            out.push_str(&format!("        _j{pc}:;\n"));
+            out.push_str(&format!("        _j{pfx}_{pc}:;\n"));
         }
 
         let opc = code[pc];
@@ -246,7 +257,7 @@ fn emit_bytecode_block(code: &[u16], next_pc: u16, raw_word: u16, out: &mut Stri
 
         match opc {
             op::RET => {
-                out.push_str("        goto _bc_end;\n");
+                out.push_str(&format!("        goto _bc_end_{pfx};\n"));
                 // Keep scanning — there may be more code reached via jumps.
             }
 
@@ -372,17 +383,17 @@ fn emit_bytecode_block(code: &[u16], next_pc: u16, raw_word: u16, out: &mut Stri
             op::JUMP => {
                 let raw = code[pc] as i16; pc += 1;
                 let target = (pc as isize + raw as isize) as usize;
-                out.push_str(&format!("        goto _j{target};\n"));
+                out.push_str(&format!("        goto _j{pfx}_{target};\n"));
             }
             op::JUMP_IF => {
                 let raw = code[pc] as i16; pc += 1;
                 let target = (pc as isize + raw as isize) as usize;
-                out.push_str(&format!("        if (_stk[--_sp]!=0U) goto _j{target};\n"));
+                out.push_str(&format!("        if (_stk[--_sp]!=0U) goto _j{pfx}_{target};\n"));
             }
             op::JUMP_NOT => {
                 let raw = code[pc] as i16; pc += 1;
                 let target = (pc as isize + raw as isize) as usize;
-                out.push_str(&format!("        if (_stk[--_sp]==0U) goto _j{target};\n"));
+                out.push_str(&format!("        if (_stk[--_sp]==0U) goto _j{pfx}_{target};\n"));
             }
 
             unknown => {
@@ -394,10 +405,10 @@ fn emit_bytecode_block(code: &[u16], next_pc: u16, raw_word: u16, out: &mut Stri
     // Emit any label whose target falls on or past the last instruction.
     // (Happens when jump patches target the word just after the last RET.)
     if jump_targets.contains(&pc) {
-        out.push_str(&format!("        _j{pc}:;\n"));
+        out.push_str(&format!("        _j{pfx}_{pc}:;\n"));
     }
 
-    out.push_str("        _bc_end:;\n");
+    out.push_str(&format!("        _bc_end_{pfx}:;\n"));
     out.push_str("    }\n");
 }
 
@@ -517,10 +528,10 @@ mod tests {
         Instr::Store15(5).encode(&mut code);  // STORE15 addr::Z
         Instr::Ret.encode(&mut code);
         let mut out = String::new();
-        emit_bytecode_block(&code, 0x0801, 0x1234, &mut out);
-        assert!(out.contains("0x002aU"));       // 42 pushed
+        emit_bytecode_block(&code, 0x0801, 0x0800, 0, 0x1234, &mut out);
+        assert!(out.contains("0x002aU"));        // 42 pushed
         assert!(out.contains("agc_vm_write15")); // store
-        assert!(out.contains("_bc_end"));
+        assert!(out.contains("_bc_end_04000_0")); // unique end label (block=0o4000, seq=0)
     }
 
     #[test]
@@ -531,10 +542,10 @@ mod tests {
         let mut code = alloc::vec![];
         Instr::JumpNot(2).encode(&mut code);  // words 0,1
         Instr::PushImm(0).encode(&mut code);  // words 2,3 — skipped when cond=0
-        Instr::Ret.encode(&mut code);          // word 4: _j4 label expected here
+        Instr::Ret.encode(&mut code);          // word 4: _j<pfx>_4 label expected here
         Instr::Ret.encode(&mut code);          // word 5
         let mut out = String::new();
-        emit_bytecode_block(&code, 0x0100, 0x0000, &mut out);
-        assert!(out.contains("_j4"), "expected label _j4 at word 4");
+        emit_bytecode_block(&code, 0x0100, 0x00ff, 0, 0x0000, &mut out);
+        assert!(out.contains("_j00377_0_4"), "expected label _j00377_0_4 at word 4");
     }
 }
