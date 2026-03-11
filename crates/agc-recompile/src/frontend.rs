@@ -14,8 +14,8 @@ use alloc::collections::{BTreeMap, BTreeSet, VecDeque};
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use agc_isa::{builtin_spec_set, InstrType, SemOp};
 use agc_interp::decode::decode;
+use agc_isa::{builtin_spec_set, InstrType, SemOp};
 use agc_lower::lower_sem;
 
 use crate::backend::DirectInstr;
@@ -31,7 +31,11 @@ pub struct FrontendError {
 
 impl core::fmt::Display for FrontendError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "frontend error at {:#07o}: {}", self.address, self.message)
+        write!(
+            f,
+            "frontend error at {:#07o}: {}",
+            self.address, self.message
+        )
     }
 }
 
@@ -77,7 +81,9 @@ pub fn decode_stream(
         let mut instrs: Vec<InstrRecord> = Vec::new();
         let mut pc: u16 = start;
         let mut extend: bool = start_extend;
-        let terminator;
+        let mut terminator;
+
+        let mut visited = BTreeSet::new();
 
         'block: loop {
             // If we reach an address that is a header (other than our own start)
@@ -100,11 +106,7 @@ pub fn decode_stream(
             let operand = decoded.address;
 
             // Semantics from spec (empty slice if not populated).
-            let ops: Vec<SemOp> = decoded
-                .spec
-                .semantics
-                .clone()
-                .unwrap_or_default();
+            let ops: Vec<SemOp> = decoded.spec.semantics.clone().unwrap_or_default();
 
             let next_pc = (pc + 1) & 0x7FFF;
 
@@ -132,26 +134,50 @@ pub fn decode_stream(
 
             // Reset extend state (for any potential future loop continuation).
             #[allow(unused_assignments)]
-            { extend = false; }
-
-            // Determine block terminator from instruction type and semantics.
-            let term = classify_terminator(instr_type, &ops, pc, next_pc, operand, memory, &indirect_targets);
-
-            // Push all successor addresses onto the worklist as new headers.
-            for succ in term.successors() {
-                if headers.insert(succ) {
-                    worklist.push_back((succ, false));
-                }
+            {
+                extend = false;
             }
 
-            terminator = term;
-            break 'block;
+            // Determine block terminator from instruction type and semantics.
+            let term = classify_terminator(
+                instr_type,
+                &ops,
+                pc,
+                next_pc,
+                operand,
+                memory,
+                &indirect_targets,
+            );
+
+            match term {
+                Terminator::FallThrough(addr) | Terminator::Jump(addr)
+                    if !visited.contains(&addr) =>
+                {
+                    visited.insert(addr);
+                    pc = addr;
+                }
+                term => {
+                    // Push all successor addresses onto the worklist as new headers.
+                    for succ in term.successors() {
+                        if headers.insert(succ) {
+                            worklist.push_back((succ, false));
+                        }
+                    }
+
+                    terminator = term;
+                    break 'block;
+                }
+            }
         }
 
         done.insert(start);
         blocks.insert(
             start,
-            BasicBlock { label: start, instrs, terminator },
+            BasicBlock {
+                label: start,
+                instrs,
+                terminator,
+            },
         );
     }
 
@@ -218,7 +244,10 @@ pub(crate) fn classify_terminator(
     // Single conditional branch.
     if has_branch_if && !has_branch {
         if let Some(Some(taken)) = branch_targets.first() {
-            return Terminator::CondBranch { taken: *taken, fallthru: next_pc };
+            return Terminator::CondBranch {
+                taken: *taken,
+                fallthru: next_pc,
+            };
         }
         return make_indirect(indirect_targets);
     }
@@ -250,14 +279,14 @@ fn static_branch_target(
 ) -> Option<u16> {
     use agc_isa::Expr;
     match expr {
-        Expr::Lit(n)     => Some(*n & 0x7FFF),
-        Expr::PcRel(n)   => Some((next_pc as i32 + *n as i32) as u16 & 0x7FFF),
-        Expr::Z          => Some(next_pc),
+        Expr::Lit(n) => Some(*n & 0x7FFF),
+        Expr::PcRel(n) => Some((next_pc as i32 + *n as i32) as u16 & 0x7FFF),
+        Expr::Z => Some(next_pc),
         // Branch to mem[operand] — resolvable if operand is in fixed or erasable.
-        Expr::Mem        => Some(memory[operand as usize & 0x0FFF] & 0x7FFF),
-        Expr::MemAt(a)   => Some(memory[*a as usize & 0x0FFF] & 0x7FFF),
+        Expr::Mem => Some(memory[operand as usize & 0x0FFF] & 0x7FFF),
+        Expr::MemAt(a) => Some(memory[*a as usize & 0x0FFF] & 0x7FFF),
         // Operand field itself used as target (e.g. TCF uses fixed F address).
-        Expr::Operand    => Some(operand & 0x7FFF),
+        Expr::Operand => Some(operand & 0x7FFF),
         _ => {
             let _ = pc; // suppress unused warning
             None
