@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use agc_recompile::{
     backend::{
         c::CBackend,
-        wasm::WasmDirectBackend,
+        wasm::{WasmDirectBackend, HostFnSig, N_VIRT_REGS, VIRT_REG_BASE},
         Backend, DirectBackend,
     },
     decode_direct, decode_stream, InstrStream, Terminator,
@@ -328,4 +328,126 @@ fn c_ndx_erasable_falls_back_to_indirect() {
     );
 
     compile_c(&CBackend::default().emit(&stream).unwrap());
+}
+
+// ─── HOST_CALL, virtual-register, and isolation tests ────────────────────────
+
+/// `HOST_CALL` in TC2 bytecode compiles to a valid WASM `call` targeting the
+/// registered host-function import.
+///
+/// Sequence injected at 0o4000 (extend=false):
+///   PUSH_IMM 0o4000   ; push the PC value as the argument
+///   HOST_CALL slot=0, n_args=1, n_results=0
+///   RET
+#[test]
+fn wasm_host_call_opcode_is_valid() {
+    use agc_lower::bytecode::Instr;
+
+    let image = blank_image();
+    let mut backend = WasmDirectBackend::<(), String>::new(vec![0o4000]);
+    let slot = backend.add_host_fn(HostFnSig {
+        module:  "env".into(),
+        name:    "my_hook".into(),
+        params:  1,
+        results: 0,
+    });
+    assert_eq!(slot, 0, "first host fn is slot 0");
+
+    // Build custom bytecode: push PC, HOST_CALL(slot=0, n_args=1, n_results=0), Ret.
+    let mut code = Vec::new();
+    Instr::PushImm(0o4000_u16).encode(&mut code);
+    Instr::HostCall { slot: 0, n_args: 1, n_results: 0 }.encode(&mut code);
+    Instr::Ret.encode(&mut code);
+
+    for addr in 0u16..4096 {
+        for &extend in &[false, true] {
+            let mut instr = decode_direct(&image, addr, extend, &BTreeSet::new());
+            if addr == 0o4000 && !extend {
+                instr.bytecode = code.clone();
+            }
+            backend.feed_instr(&mut (), &instr).unwrap();
+        }
+    }
+    let bytes = backend.finish(&mut ()).unwrap();
+    validate_wasm(&bytes);
+
+    // The module must export "bb_04000".
+    assert!(
+        bytes.windows(8).any(|w| w == b"bb_04000"),
+        "export bb_04000 not found"
+    );
+    // The module must contain an import named "my_hook".
+    assert!(
+        bytes.windows(7).any(|w| w == b"my_hook"),
+        "import my_hook not found"
+    );
+}
+
+/// TC2 bytecode that writes to and reads from a virtual register (`0xFF10`)
+/// compiles to valid WASM that uses `local.set` / `local.get` on the
+/// corresponding isolated local variable.
+#[test]
+fn wasm_virtual_register_roundtrip_is_valid() {
+    use agc_lower::bytecode::Instr;
+
+    let image = blank_image();
+    let mut backend = WasmDirectBackend::<(), String>::new(vec![0o4000]);
+
+    // Bytecode: PUSH_IMM 42 → STORE(0xFF10) → LOAD(0xFF10) → STORE15(A) → RET
+    let vr = VIRT_REG_BASE;
+    let mut code = Vec::new();
+    Instr::PushImm(42).encode(&mut code);
+    Instr::Store(vr).encode(&mut code);
+    Instr::Load(vr).encode(&mut code);
+    Instr::Store15(0x0000).encode(&mut code); // store to A register
+    Instr::Ret.encode(&mut code);
+
+    for addr in 0u16..4096 {
+        for &extend in &[false, true] {
+            let mut instr = decode_direct(&image, addr, extend, &BTreeSet::new());
+            if addr == 0o4000 && !extend {
+                instr.bytecode = code.clone();
+            }
+            backend.feed_instr(&mut (), &instr).unwrap();
+        }
+    }
+    let bytes = backend.finish(&mut ()).unwrap();
+    validate_wasm(&bytes);
+}
+
+/// Every generated WASM function must declare exactly
+/// `4 (outer) + 4 (nested) + N_VIRT_REGS` non-parameter locals,
+/// proving that the two namespaces are allocated independently.
+///
+/// The test feeds a single instruction to keep compile time short.
+#[test]
+fn wasm_outer_and_nested_namespaces_have_distinct_locals() {
+    let image = blank_image();
+    let instr = decode_direct(&image, 0o4000, false, &BTreeSet::new());
+
+    let mut backend = WasmDirectBackend::<(), String>::new(vec![]);
+    backend.feed_instr(&mut (), &instr).unwrap();
+    let bytes = backend.finish(&mut ()).unwrap();
+
+    // Examine the first code-section entry and count declared locals.
+    use wasmparser::Parser;
+    let mut local_count = 0u32;
+    let mut found = false;
+    for payload in Parser::new(0).parse_all(&bytes) {
+        if let wasmparser::Payload::CodeSectionEntry(body) = payload.unwrap() {
+            if !found {
+                for local in body.get_locals_reader().unwrap() {
+                    let (cnt, _ty) = local.unwrap();
+                    local_count += cnt;
+                }
+                found = true;
+            }
+        }
+    }
+
+    let expected = (4 + 4 + N_VIRT_REGS) as u32; // outer + nested + virtual
+    assert_eq!(
+        local_count, expected,
+        "expected {expected} locals per function (4 outer + 4 nested + {N_VIRT_REGS} virtual)"
+    );
 }

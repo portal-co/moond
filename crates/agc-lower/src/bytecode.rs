@@ -8,6 +8,7 @@
 //!
 //! - Simple opcodes (`0x0001`–`0x002F`): 1 word.
 //! - Two-word opcodes (`0x0100`–`0x010A`): opcode word + u16 operand word.
+//! - Three-word opcodes (`0x0200`–`0x02FF`): opcode word + two u16 operand words.
 //!
 //! Jump offsets are signed (stored as `u16` with TC2 interpretation).
 //! Offset 0 means "next instruction after this one" (jump over nothing).
@@ -141,6 +142,23 @@ pub mod op {
     pub const LSHR:           u16 = 0x0108;
     /// Logical left shift by immediate: pop x, push `(x << k) & 0xFFFF`.
     pub const LSHL:           u16 = 0x0109;
+
+    // ── Three-word opcodes (opcode + operand-0 + operand-1) ───────────────
+
+    /// Call a host (WASM import / C extern) function by slot index.
+    ///
+    /// Encoding: `[HOST_CALL, slot:u16, pack(n_args:u8, n_results:u8):u16]`
+    ///
+    /// * `slot` — index into the backend-provided host-function table.
+    /// * `n_args` — number of i32 values popped from the TC2 stack and passed
+    ///   as arguments to the host function.  Stack depth must be ≥ n_args.
+    /// * `n_results` — number of i32 values pushed onto the TC2 stack after
+    ///   the call returns (0 or 1).
+    ///
+    /// In the WASM backend, slot `s` maps to WASM function index
+    /// `NUM_STANDARD_IMPORTS + s`.  In the C backend it maps to a
+    /// user-defined `AGC_HOST_CALL` macro.
+    pub const HOST_CALL:      u16 = 0x0200;
 }
 
 // ─── Instruction enum ─────────────────────────────────────────────────────────
@@ -170,6 +188,8 @@ pub enum Instr {
     SetOff(u16),
     Lshr(u16),
     Lshl(u16),
+    /// Call host function at `slot`, passing `n_args` stack values; push `n_results` (0 or 1).
+    HostCall { slot: u16, n_args: u8, n_results: u8 },
 }
 
 impl Instr {
@@ -179,6 +199,7 @@ impl Instr {
             Instr::PushImm(_) | Instr::Load(_) | Instr::Store(_) | Instr::Store15(_)
             | Instr::Jump(_) | Instr::JumpIf(_) | Instr::JumpNot(_) | Instr::SetOff(_)
             | Instr::Lshr(_) | Instr::Lshl(_) => 2,
+            Instr::HostCall { .. } => 3,
             _ => 1,
         }
     }
@@ -235,6 +256,11 @@ impl Instr {
             Instr::SetOff(v)    => { out.push(SET_OFF);  out.push(*v); }
             Instr::Lshr(k)      => { out.push(LSHR);     out.push(*k); }
             Instr::Lshl(k)      => { out.push(LSHL);     out.push(*k); }
+            Instr::HostCall { slot, n_args, n_results } => {
+                out.push(HOST_CALL);
+                out.push(*slot);
+                out.push(((*n_args as u16) << 8) | (*n_results as u16));
+            }
         }
     }
 
@@ -296,6 +322,13 @@ impl Instr {
             SET_OFF        => return Some((Instr::SetOff(op1(offset + 1)?), 2)),
             LSHR           => return Some((Instr::Lshr(op1(offset + 1)?), 2)),
             LSHL           => return Some((Instr::Lshl(op1(offset + 1)?), 2)),
+            HOST_CALL      => {
+                let slot = op1(offset + 1)?;
+                let packed = op1(offset + 2)?;
+                let n_args    = (packed >> 8) as u8;
+                let n_results = (packed & 0xFF) as u8;
+                return Some((Instr::HostCall { slot, n_args, n_results }, 3));
+            }
             _              => return None,
         };
         Some((instr, 1))

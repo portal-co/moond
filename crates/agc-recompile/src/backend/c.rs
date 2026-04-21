@@ -56,10 +56,19 @@ use agc_lower::bytecode::op;
 pub static RUNTIME_HEADER: &str = r#"/* agc_runtime.h — TC2 bytecode recompiler runtime
  * All OC arithmetic is compiled into the TC2 bytecode; this header only
  * provides the CPU state struct, memory-dispatch helpers, and TC2 wide-int
- * primitives used by IMUL_HI15 / IMUL_LO15 / IDIV_Q15 / IDIV_R15. */
+ * primitives used by IMUL_HI15 / IMUL_LO15 / IDIV_Q15 / IDIV_R15.
+ *
+ * HOST_CALL
+ * Define AGC_HOST_CALL(s,slot,nargs,nresults,stk,sp) before including this
+ * header to handle TC2 HOST_CALL opcodes.  The default is a no-op stub. */
 #ifndef AGC_RUNTIME_H
 #define AGC_RUNTIME_H
 #include <stdint.h>
+
+/* ── HOST_CALL hook ─────────────────────────────────────────────────────── */
+#ifndef AGC_HOST_CALL
+#  define AGC_HOST_CALL(s, slot, nargs, nresults, stk, sp) \n     do { (void)(s); /* unimplemented host call at slot (slot) */ } while(0)
+#endif
 
 /* ── Return codes ────────────────────────────────────────────────────────── */
 #define AGC_OK        0
@@ -396,6 +405,16 @@ fn emit_bytecode_block(code: &[u16], next_pc: u16, block_label: u16, seq: usize,
                 let raw = code[pc] as i16; pc += 1;
                 let target = (pc as isize + raw as isize) as usize;
                 out.push_str(&format!("        if (_stk[--_sp]==0U) goto _j{pfx}_{target};\n"));
+            }
+
+            op::HOST_CALL => {
+                let slot         = code[pc]; pc += 1;
+                let packed       = code[pc]; pc += 1;
+                let n_args       = (packed >> 8) as u16;
+                let n_results    = (packed & 0xFF) as u16;
+                out.push_str(&format!(
+                    "        AGC_HOST_CALL(s, {slot}U, {n_args}U, {n_results}U, _stk, _sp);\n"
+                ));
             }
 
             unknown => {
