@@ -120,6 +120,8 @@ pub struct WasmDirectBackend {
     ctx: (),
     /// Entry-point addresses to export as "bb_OOOOO".
     entry_points: Vec<u16>,
+    /// Index of the current tail function (last created by `next`).
+    tail_idx: usize,
 }
 
 impl WasmDirectBackend {
@@ -128,6 +130,7 @@ impl WasmDirectBackend {
             reactor: Reactor::with_base_func_offset(NUM_IMPORTS),
             ctx: (),
             entry_points,
+            tail_idx: 0,
         }
     }
 }
@@ -144,23 +147,28 @@ impl DirectBackend for WasmDirectBackend {
         self.reactor
             .next(&mut self.ctx, core::iter::once((4u32, ValType::I32)), 2)
             .unwrap();
+        self.tail_idx = self.reactor.fn_count().saturating_sub(1);
+
+        let tail_idx = self.tail_idx;
+        let reactor = &self.reactor;
+        let ctx = &mut self.ctx;
 
         // Pre-advance Z to next_pc so TC2 LOAD(Z) reads are correct.
         let next_pc = instr.addr.wrapping_add(1) & 0x7FFF;
-        feed(&mut self.reactor, &mut self.ctx, Instruction::I32Const(0))?;
-        feed(&mut self.reactor, &mut self.ctx, Instruction::I32Const(next_pc as i32))?;
-        feed(&mut self.reactor, &mut self.ctx, Instruction::I32Store16(mem16(MEM_Z)))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(next_pc as i32))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Store16(mem16(MEM_Z)))?;
 
         // Expose raw instruction word for LOAD(INSTR_WORD).
-        feed(&mut self.reactor, &mut self.ctx, Instruction::I32Const(0))?;
-        feed(&mut self.reactor, &mut self.ctx, Instruction::I32Const(instr.raw_word as i32))?;
-        feed(&mut self.reactor, &mut self.ctx, Instruction::I32Store16(mem16(MEM_INSTR_WORD)))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(instr.raw_word as i32))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Store16(mem16(MEM_INSTR_WORD)))?;
 
         // Emit TC2 bytecode (pre-lowered by the caller via decode_direct).
-        emit_bc_segment(&mut self.reactor, &mut self.ctx, &instr.bytecode, 0)?;
+        emit_bc_segment(reactor, tail_idx, ctx, &instr.bytecode, 0)?;
 
         // Emit control-flow terminator.
-        emit_direct_terminator(&mut self.reactor, &mut self.ctx, instr)?;
+        emit_direct_terminator(reactor, tail_idx, ctx, instr)?;
 
         Ok(())
     }
@@ -255,7 +263,8 @@ impl DirectBackend for WasmDirectBackend {
 ///   `Unreachable`.
 /// - `Halt`: `Unreachable`.
 fn emit_direct_terminator(
-    reactor: &mut Reactor<()>,
+    reactor: &Reactor<()>,
+    tail_idx: usize,
     ctx: &mut (),
     instr: &DirectInstr,
 ) -> Result<(), String> {
@@ -267,70 +276,70 @@ fn emit_direct_terminator(
                 // EXTEND opcode: natural chain goes to (next, ext=false),
                 // but the next instruction must be decoded as an extracode.
                 reactor
-                    .jmp(ctx, FuncIdx(ri(next_addr, true)), 0)
+                    .jmp(tail_idx, ctx, FuncIdx(ri(next_addr, true)), 0)
                     .unwrap();
             } else if instr.extend {
                 // After an EXTEND=1 instruction, EXTEND resets to false.
                 // Natural chain would go to (next, ext=true); redirect.
                 reactor
-                    .jmp(ctx, FuncIdx(ri(next_addr, false)), 0)
+                    .jmp(tail_idx, ctx, FuncIdx(ri(next_addr, false)), 0)
                     .unwrap();
             }
             // else: natural len=2 chain correctly targets (next, ext=false).
         }
 
         Terminator::Jump(target) => {
-            reactor.jmp(ctx, FuncIdx(ri(*target, false)), 0).unwrap();
+            reactor.jmp(tail_idx, ctx, FuncIdx(ri(*target, false)), 0).unwrap();
         }
 
         Terminator::CondBranch { taken, fallthru } => {
             // Read Z; if Z == taken, tail-call taken; else fall through.
-            feed(reactor, ctx, Instruction::I32Const(0))?;
-            feed(reactor, ctx, Instruction::I32Load16U(mem16(MEM_Z)))?;
-            feed(reactor, ctx, Instruction::I32Const(*taken as i32))?;
-            feed(reactor, ctx, Instruction::I32Eq)?;
-            feed(reactor, ctx, Instruction::If(BlockType::Empty))?;
-            feed(reactor, ctx, Instruction::ReturnCall(ri(*taken, false) + NUM_IMPORTS))?;
-            feed(reactor, ctx, Instruction::End)?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Load16U(mem16(MEM_Z)))?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Const(*taken as i32))?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Eq)?;
+            feed(reactor, tail_idx, ctx, Instruction::If(BlockType::Empty))?;
+            feed(reactor, tail_idx, ctx, Instruction::ReturnCall(ri(*taken, false) + NUM_IMPORTS))?;
+            feed(reactor, tail_idx, ctx, Instruction::End)?;
             // Fall through to fallthru address.
-            reactor.jmp(ctx, FuncIdx(ri(*fallthru, false)), 0).unwrap();
+            reactor.jmp(tail_idx, ctx, FuncIdx(ri(*fallthru, false)), 0).unwrap();
         }
 
         Terminator::CcsBranch(targets) => {
             // Load Z once; then a chain of if/ReturnCall/End guards.
-            feed(reactor, ctx, Instruction::I32Const(0))?;
-            feed(reactor, ctx, Instruction::I32Load16U(mem16(MEM_Z)))?;
-            feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Load16U(mem16(MEM_Z)))?;
+            feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
             for &t in targets.iter() {
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(t as i32))?;
-                feed(reactor, ctx, Instruction::I32Eq)?;
-                feed(reactor, ctx, Instruction::If(BlockType::Empty))?;
-                feed(reactor, ctx, Instruction::ReturnCall(ri(t, false) + NUM_IMPORTS))?;
-                feed(reactor, ctx, Instruction::End)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(t as i32))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eq)?;
+                feed(reactor, tail_idx, ctx, Instruction::If(BlockType::Empty))?;
+                feed(reactor, tail_idx, ctx, Instruction::ReturnCall(ri(t, false) + NUM_IMPORTS))?;
+                feed(reactor, tail_idx, ctx, Instruction::End)?;
             }
-            feed(reactor, ctx, Instruction::Unreachable)?;
+            feed(reactor, tail_idx, ctx, Instruction::Unreachable)?;
         }
 
         Terminator::Indirect { possible_targets } => {
             // Load Z; chain of if/ReturnCall/End for each known target.
-            feed(reactor, ctx, Instruction::I32Const(0))?;
-            feed(reactor, ctx, Instruction::I32Load16U(mem16(MEM_Z)))?;
-            feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+            feed(reactor, tail_idx, ctx, Instruction::I32Load16U(mem16(MEM_Z)))?;
+            feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
             for &t in possible_targets.iter() {
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(t as i32))?;
-                feed(reactor, ctx, Instruction::I32Eq)?;
-                feed(reactor, ctx, Instruction::If(BlockType::Empty))?;
-                feed(reactor, ctx, Instruction::ReturnCall(ri(t, false) + NUM_IMPORTS))?;
-                feed(reactor, ctx, Instruction::End)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(t as i32))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eq)?;
+                feed(reactor, tail_idx, ctx, Instruction::If(BlockType::Empty))?;
+                feed(reactor, tail_idx, ctx, Instruction::ReturnCall(ri(t, false) + NUM_IMPORTS))?;
+                feed(reactor, tail_idx, ctx, Instruction::End)?;
             }
             // No match: unreachable (host should dispatch before calling).
-            feed(reactor, ctx, Instruction::Unreachable)?;
+            feed(reactor, tail_idx, ctx, Instruction::Unreachable)?;
         }
 
         Terminator::Halt => {
-            feed(reactor, ctx, Instruction::Unreachable)?;
+            feed(reactor, tail_idx, ctx, Instruction::Unreachable)?;
         }
     }
     Ok(())
@@ -343,11 +352,12 @@ fn mem16(offset: u64) -> MemArg {
 }
 
 fn feed(
-    reactor: &mut Reactor<()>,
+    reactor: &Reactor<()>,
+    tail_idx: usize,
     ctx: &mut (),
     instr: Instruction<'_>,
 ) -> Result<(), String> {
-    reactor.feed(ctx, &instr).map_err(|e| match e {})
+    reactor.feed_to(tail_idx, ctx, &instr).map_err(|e| match e {})
 }
 
 /// Map a TC2 register address to its WASM linear-memory byte offset.
@@ -371,56 +381,58 @@ fn tc2_reg_offset(addr: u16) -> Option<u64> {
 // ─── LOAD / STORE with a known (compile-time) TC2 address ────────────────────
 
 fn emit_load_known(
-    reactor: &mut Reactor<()>,
+    reactor: &Reactor<()>,
+    tail_idx: usize,
     ctx: &mut (),
     addr: u16,
 ) -> Result<(), String> {
     if let Some(off) = tc2_reg_offset(addr) {
-        feed(reactor, ctx, Instruction::I32Const(0))?;
-        feed(reactor, ctx, Instruction::I32Load16U(mem16(off)))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Load16U(mem16(off)))?;
     } else if addr == 0x0007 {
-        feed(reactor, ctx, Instruction::I32Const(0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
     } else if addr >= 0x8000 {
-        feed(reactor, ctx, Instruction::I32Const((addr - 0x8000) as i32))?;
-        feed(reactor, ctx, Instruction::Call(FN_CHAN_READ))?;
-        feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-        feed(reactor, ctx, Instruction::I32And)?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const((addr - 0x8000) as i32))?;
+        feed(reactor, tail_idx, ctx, Instruction::Call(FN_CHAN_READ))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32And)?;
     } else {
-        feed(reactor, ctx, Instruction::I32Const(addr as i32))?;
-        feed(reactor, ctx, Instruction::Call(FN_MEM_READ))?;
-        feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-        feed(reactor, ctx, Instruction::I32And)?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(addr as i32))?;
+        feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_READ))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32And)?;
     }
     Ok(())
 }
 
 fn emit_store_known(
-    reactor: &mut Reactor<()>,
+    reactor: &Reactor<()>,
+    tail_idx: usize,
     ctx: &mut (),
     addr: u16,
     mask15: bool,
 ) -> Result<(), String> {
     if mask15 {
-        feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-        feed(reactor, ctx, Instruction::I32And)?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32And)?;
     }
     if let Some(off) = tc2_reg_offset(addr) {
-        feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-        feed(reactor, ctx, Instruction::I32Const(0))?;
-        feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-        feed(reactor, ctx, Instruction::I32Store16(mem16(off)))?;
+        feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+        feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Store16(mem16(off)))?;
     } else if addr == 0x0007 {
-        feed(reactor, ctx, Instruction::Drop)?;
+        feed(reactor, tail_idx, ctx, Instruction::Drop)?;
     } else if addr >= 0x8000 {
-        feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-        feed(reactor, ctx, Instruction::I32Const((addr - 0x8000) as i32))?;
-        feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-        feed(reactor, ctx, Instruction::Call(FN_CHAN_WRITE))?;
+        feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const((addr - 0x8000) as i32))?;
+        feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+        feed(reactor, tail_idx, ctx, Instruction::Call(FN_CHAN_WRITE))?;
     } else {
-        feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-        feed(reactor, ctx, Instruction::I32Const(addr as i32))?;
-        feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-        feed(reactor, ctx, Instruction::Call(FN_MEM_WRITE))?;
+        feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+        feed(reactor, tail_idx, ctx, Instruction::I32Const(addr as i32))?;
+        feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+        feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_WRITE))?;
     }
     Ok(())
 }
@@ -434,7 +446,8 @@ fn emit_store_known(
 /// WASM `if/else/end` blocks via recursive descent — TC2 jumps are always
 /// forward-only so the nesting is always well-formed.
 fn emit_bc_segment(
-    reactor: &mut Reactor<()>,
+    reactor: &Reactor<()>,
+    tail_idx: usize,
     ctx: &mut (),
     code: &[u16],
     start: usize,
@@ -448,296 +461,296 @@ fn emit_bc_segment(
             op::RET => break,
 
             op::DUP => {
-                feed(reactor, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
             }
             op::SWAP => {
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
             }
-            op::DROP => { feed(reactor, ctx, Instruction::Drop)?; }
+            op::DROP => { feed(reactor, tail_idx, ctx, Instruction::Drop)?; }
 
-            op::ADD  => { feed(reactor, ctx, Instruction::I32Add)?; }
-            op::SUB  => { feed(reactor, ctx, Instruction::I32Sub)?; }
-            op::AND  => { feed(reactor, ctx, Instruction::I32And)?; }
-            op::OR   => { feed(reactor, ctx, Instruction::I32Or)?; }
-            op::XOR  => { feed(reactor, ctx, Instruction::I32Xor)?; }
+            op::ADD  => { feed(reactor, tail_idx, ctx, Instruction::I32Add)?; }
+            op::SUB  => { feed(reactor, tail_idx, ctx, Instruction::I32Sub)?; }
+            op::AND  => { feed(reactor, tail_idx, ctx, Instruction::I32And)?; }
+            op::OR   => { feed(reactor, tail_idx, ctx, Instruction::I32Or)?; }
+            op::XOR  => { feed(reactor, tail_idx, ctx, Instruction::I32Xor)?; }
             op::NOT  => {
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32Xor)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Xor)?;
             }
             op::MASK15 => {
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::NEG => {
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(0))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Sub)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Sub)?;
             }
             op::LSHR_STK => {
-                feed(reactor, ctx, Instruction::I32Const(15))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::I32ShrU)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(15))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32ShrU)?;
             }
             op::LSHL_STK => {
-                feed(reactor, ctx, Instruction::I32Const(15))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::I32Shl)?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(15))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Shl)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
 
             op::IMUL_HI15 => {
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Mul)?;
-                feed(reactor, ctx, Instruction::I32Const(15))?;
-                feed(reactor, ctx, Instruction::I32ShrS)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Mul)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(15))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32ShrS)?;
             }
             op::IMUL_LO15 => {
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Mul)?;
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Mul)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::IDIV_Q15 => {
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::I32Const(15))?;
-                feed(reactor, ctx, Instruction::I32Shl)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Or)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
-                feed(reactor, ctx, Instruction::I32DivS)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(15))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Shl)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Or)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32DivS)?;
             }
             op::IDIV_R15 => {
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Extend16S)?;
-                feed(reactor, ctx, Instruction::I32Const(15))?;
-                feed(reactor, ctx, Instruction::I32Shl)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Or)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
-                feed(reactor, ctx, Instruction::I32RemS)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Extend16S)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(15))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Shl)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Or)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32RemS)?;
             }
 
             op::IS_POS => {
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(0))?;
-                feed(reactor, ctx, Instruction::I32Ne)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(0x4000))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::I32Eqz)?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Ne)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x4000))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eqz)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::IS_PLUS_ZERO => {
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::I32Eqz)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eqz)?;
             }
             op::IS_NEG => {
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(0x4000))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::I32Const(0))?;
-                feed(reactor, ctx, Instruction::I32Ne)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32Ne)?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x4000))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Ne)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Ne)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::IS_MINUS_ZERO => {
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32Eq)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eq)?;
             }
             op::IS_ZERO_OR_NEG => {
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Eqz)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(0x7FFF))?;
-                feed(reactor, ctx, Instruction::I32Eq)?;
-                feed(reactor, ctx, Instruction::I32Or)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(0x4000))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::I32Const(0))?;
-                feed(reactor, ctx, Instruction::I32Ne)?;
-                feed(reactor, ctx, Instruction::I32Or)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eqz)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x7FFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eq)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Or)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x4000))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Ne)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Or)?;
             }
             op::HAS_OVERFLOW => {
-                feed(reactor, ctx, Instruction::I32Const(14))?;
-                feed(reactor, ctx, Instruction::I32ShrU)?;
-                feed(reactor, ctx, Instruction::I32Const(3))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(1))?;
-                feed(reactor, ctx, Instruction::I32Eq)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::I32Const(2))?;
-                feed(reactor, ctx, Instruction::I32Eq)?;
-                feed(reactor, ctx, Instruction::I32Or)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(14))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32ShrU)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(3))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalTee(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(1))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eq)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(2))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Eq)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Or)?;
             }
-            op::BOOL_AND => { feed(reactor, ctx, Instruction::I32And)?; }
-            op::BOOL_NOT => { feed(reactor, ctx, Instruction::I32Eqz)?; }
+            op::BOOL_AND => { feed(reactor, tail_idx, ctx, Instruction::I32And)?; }
+            op::BOOL_NOT => { feed(reactor, tail_idx, ctx, Instruction::I32Eqz)?; }
 
-            op::LOAD_T  => { feed(reactor, ctx, Instruction::LocalGet(LOCAL_T))?; }
-            op::STORE_T => { feed(reactor, ctx, Instruction::LocalSet(LOCAL_T))?; }
+            op::LOAD_T  => { feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_T))?; }
+            op::STORE_T => { feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_T))?; }
 
-            op::GET_OFF       => { feed(reactor, ctx, Instruction::LocalGet(LOCAL_OFF))?; }
-            op::SET_OFF_STACK => { feed(reactor, ctx, Instruction::LocalSet(LOCAL_OFF))?; }
+            op::GET_OFF       => { feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_OFF))?; }
+            op::SET_OFF_STACK => { feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_OFF))?; }
 
             op::LOAD_OFF => {
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_OFF))?;
-                feed(reactor, ctx, Instruction::Call(FN_MEM_READ))?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_OFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_READ))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::STORE_OFF => {
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_OFF))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::Call(FN_MEM_WRITE))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_OFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_WRITE))?;
             }
             op::LOAD_OFF1 => {
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_OFF))?;
-                feed(reactor, ctx, Instruction::I32Const(1))?;
-                feed(reactor, ctx, Instruction::I32Add)?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::Call(FN_MEM_READ))?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_OFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(1))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Add)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_READ))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::STORE_OFF1 => {
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_OFF))?;
-                feed(reactor, ctx, Instruction::I32Const(1))?;
-                feed(reactor, ctx, Instruction::I32Add)?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::Call(FN_MEM_WRITE))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_OFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(1))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Add)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_WRITE))?;
             }
 
             op::LOAD_CHAN_OFF => {
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_OFF))?;
-                feed(reactor, ctx, Instruction::I32Const(0x01FF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::Call(FN_CHAN_READ))?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_OFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x01FF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_CHAN_READ))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::STORE_CHAN_OFF => {
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_OFF))?;
-                feed(reactor, ctx, Instruction::I32Const(0x01FF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::Call(FN_CHAN_WRITE))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_OFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0x01FF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_CHAN_WRITE))?;
             }
 
             op::LOAD_IND => {
-                feed(reactor, ctx, Instruction::Call(FN_MEM_READ))?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_READ))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
             op::STORE_IND => {
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
-                feed(reactor, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
-                feed(reactor, ctx, Instruction::Call(FN_MEM_WRITE))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR0))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalGet(LOCAL_SCR1))?;
+                feed(reactor, tail_idx, ctx, Instruction::Call(FN_MEM_WRITE))?;
             }
 
             op::PUSH_IMM => {
                 let v = code[pc] as i32; pc += 1;
-                feed(reactor, ctx, Instruction::I32Const(v))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(v))?;
             }
             op::LOAD => {
                 let addr = code[pc] as u16; pc += 1;
-                emit_load_known(reactor, ctx, addr)?;
+                emit_load_known(reactor, tail_idx, ctx, addr)?;
             }
             op::STORE => {
                 let addr = code[pc] as u16; pc += 1;
-                emit_store_known(reactor, ctx, addr, false)?;
+                emit_store_known(reactor, tail_idx, ctx, addr, false)?;
             }
             op::STORE15 => {
                 let addr = code[pc] as u16; pc += 1;
-                emit_store_known(reactor, ctx, addr, true)?;
+                emit_store_known(reactor, tail_idx, ctx, addr, true)?;
             }
             op::SET_OFF => {
                 let v = code[pc] as i32; pc += 1;
-                feed(reactor, ctx, Instruction::I32Const(v))?;
-                feed(reactor, ctx, Instruction::LocalSet(LOCAL_OFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(v))?;
+                feed(reactor, tail_idx, ctx, Instruction::LocalSet(LOCAL_OFF))?;
             }
             op::LSHR => {
                 let k = code[pc] as i32; pc += 1;
-                feed(reactor, ctx, Instruction::I32Const(k))?;
-                feed(reactor, ctx, Instruction::I32ShrU)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(k))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32ShrU)?;
             }
             op::LSHL => {
                 let k = code[pc] as i32; pc += 1;
-                feed(reactor, ctx, Instruction::I32Const(k))?;
-                feed(reactor, ctx, Instruction::I32Shl)?;
-                feed(reactor, ctx, Instruction::I32Const(0xFFFF))?;
-                feed(reactor, ctx, Instruction::I32And)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(k))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Shl)?;
+                feed(reactor, tail_idx, ctx, Instruction::I32Const(0xFFFF))?;
+                feed(reactor, tail_idx, ctx, Instruction::I32And)?;
             }
 
             op::JUMP_NOT => {
                 let off = code[pc] as i16; pc += 1;
                 let target = (pc as isize + off as isize) as usize;
-                feed(reactor, ctx, Instruction::If(BlockType::Empty))?;
-                emit_bc_segment(reactor, ctx, code, pc)?;
-                feed(reactor, ctx, Instruction::Else)?;
-                emit_bc_segment(reactor, ctx, code, target)?;
-                feed(reactor, ctx, Instruction::End)?;
+                feed(reactor, tail_idx, ctx, Instruction::If(BlockType::Empty))?;
+                emit_bc_segment(reactor, tail_idx, ctx, code, pc)?;
+                feed(reactor, tail_idx, ctx, Instruction::Else)?;
+                emit_bc_segment(reactor, tail_idx, ctx, code, target)?;
+                feed(reactor, tail_idx, ctx, Instruction::End)?;
                 return Ok(());
             }
             op::JUMP_IF => {
                 let off = code[pc] as i16; pc += 1;
                 let target = (pc as isize + off as isize) as usize;
-                feed(reactor, ctx, Instruction::If(BlockType::Empty))?;
-                emit_bc_segment(reactor, ctx, code, target)?;
-                feed(reactor, ctx, Instruction::Else)?;
-                emit_bc_segment(reactor, ctx, code, pc)?;
-                feed(reactor, ctx, Instruction::End)?;
+                feed(reactor, tail_idx, ctx, Instruction::If(BlockType::Empty))?;
+                emit_bc_segment(reactor, tail_idx, ctx, code, target)?;
+                feed(reactor, tail_idx, ctx, Instruction::Else)?;
+                emit_bc_segment(reactor, tail_idx, ctx, code, pc)?;
+                feed(reactor, tail_idx, ctx, Instruction::End)?;
                 return Ok(());
             }
             op::JUMP => {
                 let off = code[pc] as i16; pc += 1;
                 let target = (pc as isize + off as isize) as usize;
-                emit_bc_segment(reactor, ctx, code, target)?;
+                emit_bc_segment(reactor, tail_idx, ctx, code, target)?;
                 return Ok(());
             }
 
             _ => {
-                feed(reactor, ctx, Instruction::Unreachable)?;
+                feed(reactor, tail_idx, ctx, Instruction::Unreachable)?;
             }
         }
     }
