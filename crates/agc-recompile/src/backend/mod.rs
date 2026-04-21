@@ -4,15 +4,15 @@
 //!
 //! ### Block-based (`Backend`)
 //! Consumes a fully-decoded [`InstrStream`] (basic-block IR with liveness
-//! already computed by the frontend).  The C backend lives here.  Future SSA /
-//! waffle WASM backends will too.
+//! already computed by the frontend).  The C backend lives here.
 //!
 //! ### Direct (`DirectBackend`)
 //! Receives pre-parsed instructions one-at-a-time in a fixed order: all 4096
-//! AGC addresses × 2 EXTEND states, fed as `(addr=0, ext=false)`,
-//! `(addr=0, ext=true)`, `(addr=1, ext=false)`, … The yecta WASM backend
-//! lives here.  No liveness analysis is done; the host toolchain / yecta
-//! cycle detection handles DCE.
+//! AGC addresses × 2 EXTEND states.  The yecta WASM backend lives here.
+//!
+//! `DirectBackend<Context>` is generic over a user-supplied context type that
+//! is threaded through every call.  The default `Context = ()` preserves
+//! backward compatibility.
 
 pub mod c;
 pub mod wasm;
@@ -59,17 +59,29 @@ pub struct DirectInstr {
     pub terminator: Terminator,
 }
 
-/// A streaming direct backend.
+/// A streaming direct backend generic over a user context type.
 ///
-/// Instructions MUST be fed in the exact order described on [`DirectInstr`].
+/// Instructions MUST be fed in the order described on [`DirectInstr`].
 /// After all 4096 × 2 = 8192 instructions have been fed, call [`finish`] to
 /// obtain the compiled output.
 ///
 /// [`finish`]: DirectBackend::finish
-pub trait DirectBackend {
+///
+/// # Type parameter
+///
+/// `Context` is an arbitrary user-defined value threaded through every call
+/// (default `()`).  Architecture recompilers use it to pass trap-callback
+/// state; the default unit context requires no changes at call sites that
+/// already pass `&mut ()`.
+pub trait DirectBackend<Context = ()> {
     type Output;
     type Error: core::fmt::Display;
 
-    fn feed_instr(&mut self, instr: &DirectInstr) -> Result<(), Self::Error>;
-    fn finish(self) -> Result<Self::Output, Self::Error>;
+    fn feed_instr(
+        &mut self,
+        ctx: &mut Context,
+        instr: &DirectInstr,
+    ) -> Result<(), Self::Error>;
+
+    fn finish(self, ctx: &mut Context) -> Result<Self::Output, Self::Error>;
 }

@@ -94,14 +94,14 @@ fn compile_c(src: &str) {
 /// Feed all 4096 × 2 instructions into `WasmDirectBackend` and return the
 /// assembled WASM module bytes.
 fn make_wasm(image: &[u16; 4096], entry_points: &[u16]) -> Vec<u8> {
-    let mut backend = WasmDirectBackend::new(entry_points.to_vec());
+    let mut backend = WasmDirectBackend::<(), String>::new(entry_points.to_vec());
     for addr in 0u16..4096 {
         for &extend in &[false, true] {
             let instr = decode_direct(image, addr, extend, &BTreeSet::new());
-            backend.feed_instr(&instr).unwrap();
+            backend.feed_instr(&mut (), &instr).unwrap();
         }
     }
-    backend.finish().unwrap()
+    backend.finish(&mut ()).unwrap()
 }
 
 // ─── C backend tests ──────────────────────────────────────────────────────────
