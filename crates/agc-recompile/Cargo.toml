@@ -10,6 +10,7 @@ agc-interp = { path = "../agc-interp" }
 agc-lower  = { path = "../agc-lower" }
 yecta        = { git = "https://github.com/portal-co/speet.git", rev = "d46ca7df9428ed1fe9571632d8a6900938f700a6" }
 speet-traps  = { git = "https://github.com/portal-co/speet.git", rev = "d46ca7df9428ed1fe9571632d8a6900938f700a6" }
+wax-core     = { git = "https://github.com/portal-co/wax.git", branch = "main" }
 wasm-encoder = { version = "0.240.0", default-features = false, features = ["wasmparser"] }
 
 [dev-dependencies]

@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use agc_recompile::{
     backend::{
         c::CBackend,
-        wasm::{WasmDirectBackend, HostFnSig, N_VIRT_REGS, VIRT_REG_BASE},
+        wasm::{HostFnSig, N_REG_LOCALS, N_VIRT_REGS, VIRT_REG_BASE, WasmDirectBackend},
         Backend, DirectBackend,
     },
     decode_direct, decode_stream, InstrStream, Terminator,
@@ -445,9 +445,10 @@ fn wasm_outer_and_nested_namespaces_have_distinct_locals() {
         }
     }
 
-    let expected = (4 + 4 + N_VIRT_REGS) as u32; // outer + nested + virtual
+    let expected = (4 + 4 + N_REG_LOCALS + N_VIRT_REGS) as u32;
     assert_eq!(
         local_count, expected,
-        "expected {expected} locals per function (4 outer + 4 nested + {N_VIRT_REGS} virtual)"
+        "expected {expected} locals per function \
+         (4 outer scratch + 4 nested scratch + {N_REG_LOCALS} reg-file + {N_VIRT_REGS} virtual)"
     );
 }
