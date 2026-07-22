@@ -37,7 +37,7 @@
 
 extern crate alloc;
 
-use alloc::collections::BTreeSet;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -58,7 +58,7 @@ use speet_traps::{
 
 use agc_isa::InstrType;
 
-use super::{DirectBackend, DirectInstr};
+use super::{DirectBackend, DirectFunctionKey, DirectInstr};
 use crate::ir::Terminator;
 use agc_lower::bytecode::op;
 
@@ -98,6 +98,18 @@ pub const N_VIRT_REGS: usize = 16;
 #[inline]
 fn ri(addr: u16, extend: bool) -> u32 {
     2 * addr as u32 + extend as u32
+}
+
+#[inline]
+fn planned_function_index(
+    functions: &BTreeMap<DirectFunctionKey, u32>,
+    addr: u16,
+    extend: bool,
+) -> u32 {
+    functions
+        .get(&DirectFunctionKey::new(addr & 0x0FFF, extend))
+        .copied()
+        .unwrap_or_else(|| ri(addr, extend))
 }
 
 // ─── WasmSink — generic emission + constant-peek interface ───────────────────
@@ -238,6 +250,9 @@ pub struct HostFnSig {
 pub struct WasmDirectBackend<'cb, 'ctx, Context = (), Err = String> {
     reactor:      Reactor<Context, Err, Function, LocalPool>,
     entry_points: Vec<u16>,
+    /// Compact function indices reserved by `DirectBackend::prepare`.
+    /// Empty preserves the legacy dense `ri()` numbering.
+    function_indices: BTreeMap<DirectFunctionKey, u32>,
     tail_idx:     usize,
 
     layout:      LocalLayout,
@@ -280,6 +295,7 @@ impl<'cb, 'ctx, Context, Err> WasmDirectBackend<'cb, 'ctx, Context, Err> {
         let mut s = Self {
             reactor:     Reactor::with_base_func_offset(NUM_IMPORTS),
             entry_points,
+            function_indices: BTreeMap::new(),
             tail_idx:    0,
             layout:      LocalLayout::empty(),
             locals_mark: Mark { slot_count: 0, total_locals: 0 },
@@ -304,6 +320,12 @@ impl<'cb, 'ctx, Context, Err> WasmDirectBackend<'cb, 'ctx, Context, Err> {
         };
         s.setup_traps();
         s
+    }
+
+    /// Return the function index for a direct target. Before `prepare`, retain
+    /// the legacy dense address/EXTEND numbering for compatibility.
+    fn function_index(&self, addr: u16, extend: bool) -> u32 {
+        planned_function_index(&self.function_indices, addr, extend)
     }
 
     pub fn add_host_fn(&mut self, sig: HostFnSig) -> u16 {
@@ -344,7 +366,31 @@ where
     type Output = Vec<u8>;
     type Error  = Err;
 
+    fn prepare(&mut self, functions: &[DirectFunctionKey]) -> Result<(), Err> {
+        assert_eq!(
+            self.reactor.fn_count(),
+            0,
+            "direct functions must be reserved before feeding any body"
+        );
+        self.function_indices.clear();
+        for (index, key) in functions.iter().copied().enumerate() {
+            assert!(
+                self.function_indices.insert(key, index as u32).is_none(),
+                "direct function plan contains duplicate {key:?}"
+            );
+        }
+        Ok(())
+    }
+
     fn feed_instr(&mut self, ctx: &mut Context, instr: &DirectInstr) -> Result<(), Err> {
+        if !self.function_indices.is_empty() {
+            let key = DirectFunctionKey::new(instr.addr, instr.extend);
+            assert_eq!(
+                self.function_indices.get(&key),
+                Some(&(self.reactor.fn_count() as u32)),
+                "direct bodies must be fed in their declared plan order"
+            );
+        }
         // ── Per-function local layout ─────────────────────────────────────────
         self.layout.rewind(&self.locals_mark);
 
@@ -460,7 +506,7 @@ where
         if action == TrapAction::Skip {
             emit_direct_terminator(
                 &mut self.reactor, self.tail_idx, ctx,
-                instr, &mut self.traps, &self.layout, &outer_ctx,
+                instr, &mut self.traps, &self.layout, &outer_ctx, &self.function_indices,
             )?;
             return Ok(());
         }
@@ -472,7 +518,7 @@ where
         // ── Emit control-flow terminator ──────────────────────────────────────
         emit_direct_terminator(
             &mut self.reactor, self.tail_idx, ctx,
-            instr, &mut self.traps, &self.layout, &outer_ctx,
+            instr, &mut self.traps, &self.layout, &outer_ctx, &self.function_indices,
         )?;
 
         let _ = nested_ctx;
@@ -482,6 +528,14 @@ where
     fn finish(self, ctx: &mut Context) -> Result<Vec<u8>, Err> {
         let n_funcs          = self.reactor.fn_count() as u32;
         let base_func_offset = self.reactor.base_func_offset();
+        let entry_function_indices: Vec<_> = self
+            .entry_points
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .map(|entry| (entry, self.function_index(entry, false)))
+            .collect();
         let mut functions    = self.reactor.into_fns();
 
         for f in &mut functions {
@@ -541,10 +595,12 @@ where
         // Export section
         let mut exports = ExportSection::new();
         exports.export("memory", ExportKind::Memory, 0);
-        let unique_eps: BTreeSet<u16> = self.entry_points.iter().copied().collect();
-        for ep in unique_eps {
-            let fn_idx = ri(ep, false) + base_func_offset;
-            exports.export(&format!("bb_{ep:05o}"), ExportKind::Func, fn_idx);
+        for (entry, function_index) in entry_function_indices {
+            exports.export(
+                &format!("bb_{entry:05o}"),
+                ExportKind::Func,
+                function_index + base_func_offset,
+            );
         }
         module.section(&exports);
 
@@ -643,6 +699,7 @@ fn fire_jmp<'cb, 'ctx, Context, Err>(
     kind:          JumpKind,
     target_addr:   u16,
     target_extend: bool,
+    function_indices: &BTreeMap<DirectFunctionKey, u32>,
 ) -> Result<(), Err> {
     let jinfo = JumpInfo::direct(source_pc as u64, target_addr as u64, kind);
     let action = traps.on_jump(&jinfo, ctx, reactor, layout)?;
@@ -650,7 +707,12 @@ fn fire_jmp<'cb, 'ctx, Context, Err>(
         // Flush registers to linear memory before the return_call so the next
         // function's load-at-entry sees the current register state.
         flush_regs_direct(reactor, tail_idx, ctx, emit_ctx)?;
-        reactor.jmp(tail_idx, ctx, FuncIdx(ri(target_addr, target_extend)), 0)?;
+        reactor.jmp(
+            tail_idx,
+            ctx,
+            FuncIdx(planned_function_index(function_indices, target_addr, target_extend)),
+            0,
+        )?;
     }
     Ok(())
 }
@@ -665,6 +727,7 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
     traps:     &mut TrapConfig<'cb, 'ctx, Context, Err>,
     layout:    &LocalLayout,
     emit_ctx:  &EmitContext,
+    function_indices: &BTreeMap<DirectFunctionKey, u32>,
 ) -> Result<(), Err> {
     let next_addr = instr.addr.wrapping_add(1) & 0x7FFF;
     let base      = reactor.base_func_offset();
@@ -673,16 +736,16 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
         Terminator::FallThrough(_) => {
             if instr.instr_type == Some(InstrType::Extend) {
                 fire_jmp(reactor, tail_idx, ctx, traps, layout, emit_ctx,
-                    instr.addr, JumpKind::DirectJump, next_addr, true)?;
+                    instr.addr, JumpKind::DirectJump, next_addr, true, function_indices)?;
             } else if instr.extend {
                 fire_jmp(reactor, tail_idx, ctx, traps, layout, emit_ctx,
-                    instr.addr, JumpKind::DirectJump, next_addr, false)?;
+                    instr.addr, JumpKind::DirectJump, next_addr, false, function_indices)?;
             }
         }
 
         Terminator::Jump(target) => {
             fire_jmp(reactor, tail_idx, ctx, traps, layout, emit_ctx,
-                instr.addr, JumpKind::DirectJump, *target, false)?;
+                instr.addr, JumpKind::DirectJump, *target, false, function_indices)?;
         }
 
         Terminator::CondBranch { taken, fallthru } => {
@@ -698,12 +761,12 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
                 if action == TrapAction::Continue {
                     flush_regs_direct(reactor, tail_idx, ctx, emit_ctx)?;
                     feed(reactor, tail_idx, ctx,
-                        Instruction::ReturnCall(ri(*taken, false) + base))?;
+                        Instruction::ReturnCall(planned_function_index(function_indices, *taken, false) + base))?;
                 }
             }
             feed(reactor, tail_idx, ctx, Instruction::End)?;
             fire_jmp(reactor, tail_idx, ctx, traps, layout, emit_ctx,
-                instr.addr, JumpKind::ConditionalBranch, *fallthru, false)?;
+                instr.addr, JumpKind::ConditionalBranch, *fallthru, false, function_indices)?;
         }
 
         Terminator::CcsBranch(targets) => {
@@ -721,7 +784,7 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
                     if action == TrapAction::Continue {
                         flush_regs_direct(reactor, tail_idx, ctx, emit_ctx)?;
                         feed(reactor, tail_idx, ctx,
-                            Instruction::ReturnCall(ri(t, false) + base))?;
+                            Instruction::ReturnCall(planned_function_index(function_indices, t, false) + base))?;
                     }
                 }
                 feed(reactor, tail_idx, ctx, Instruction::End)?;
@@ -744,7 +807,7 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
                     if action == TrapAction::Continue {
                         flush_regs_direct(reactor, tail_idx, ctx, emit_ctx)?;
                         feed(reactor, tail_idx, ctx,
-                            Instruction::ReturnCall(ri(t, false) + base))?;
+                            Instruction::ReturnCall(planned_function_index(function_indices, t, false) + base))?;
                     }
                 }
                 feed(reactor, tail_idx, ctx, Instruction::End)?;

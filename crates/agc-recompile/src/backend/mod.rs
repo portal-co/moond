@@ -23,6 +23,22 @@ use agc_isa::InstrType;
 
 use crate::ir::{InstrStream, Terminator};
 
+/// Stable identity for one direct-backend instruction function.
+///
+/// `extend` is part of the key because AGC decodes the same word differently
+/// when the EXTEND flip-flop is set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DirectFunctionKey {
+    pub addr: u16,
+    pub extend: bool,
+}
+
+impl DirectFunctionKey {
+    pub const fn new(addr: u16, extend: bool) -> Self {
+        Self { addr, extend }
+    }
+}
+
 // ─── Block-based backend ──────────────────────────────────────────────────────
 
 /// A backend that consumes a fully-decoded [`InstrStream`].
@@ -76,6 +92,12 @@ pub struct DirectInstr {
 pub trait DirectBackend<Context = ()> {
     type Output;
     type Error: core::fmt::Display;
+
+    /// Reserve function indices for a selected closure before any body is fed.
+    /// Backends that do not need forward target indices can use the default.
+    fn prepare(&mut self, _functions: &[DirectFunctionKey]) -> Result<(), Self::Error> {
+        Ok(())
+    }
 
     fn feed_instr(
         &mut self,

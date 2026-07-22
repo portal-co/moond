@@ -18,7 +18,7 @@ use agc_interp::decode::decode;
 use agc_isa::{builtin_spec_set, InstrType, SemOp};
 use agc_lower::lower_sem;
 
-use crate::backend::DirectInstr;
+use crate::backend::{DirectFunctionKey, DirectInstr};
 use crate::ir::{BasicBlock, InstrRecord, InstrStream, Terminator};
 use crate::slicer::slice_next_instr;
 
@@ -41,6 +41,78 @@ impl core::fmt::Display for FrontendError {
 }
 
 // ─── Public entry point ───────────────────────────────────────────────────────
+
+/// Deterministic, conservatively reachable direct-backend function closure.
+///
+/// A direct function is identified by both address and EXTEND state. The plan
+/// contains only metadata and decoded terminators; it does not feed or emit a
+/// backend body.
+#[derive(Debug, Clone)]
+pub struct DirectFunctionPlan {
+    pub functions: Vec<DirectFunctionKey>,
+    pub indirect_targets: BTreeSet<u16>,
+}
+
+/// Discover the direct-backend closure from requested entry and indirect roots.
+///
+/// Discovery is breadth-first and deterministic. Dynamic/indirect instructions
+/// conservatively add every caller-supplied indirect target. Callers can pass
+/// this plan to `feed_direct_plan` to reserve indices and emit only this
+/// closure rather than all `4096 × 2` possible instruction states.
+pub fn plan_direct_functions(
+    memory: &[u16; 4096],
+    entry_points: &[u16],
+    indirect_targets: BTreeSet<u16>,
+) -> DirectFunctionPlan {
+    let mut pending = VecDeque::new();
+    let mut seen = BTreeSet::new();
+    for address in entry_points.iter().chain(indirect_targets.iter()) {
+        let key = DirectFunctionKey::new(*address & 0x0FFF, false);
+        if seen.insert(key) {
+            pending.push_back(key);
+        }
+    }
+
+    let mut functions = Vec::new();
+    while let Some(key) = pending.pop_front() {
+        let instr = decode_direct(memory, key.addr, key.extend, &indirect_targets);
+        let next = key.addr.wrapping_add(1) & 0x0FFF;
+        let mut add = |address: u16, extend: bool| {
+            let next_key = DirectFunctionKey::new(address & 0x0FFF, extend);
+            if seen.insert(next_key) {
+                pending.push_back(next_key);
+            }
+        };
+        match &instr.terminator {
+            Terminator::FallThrough(_) => {
+                // EXTEND affects exactly the immediately following word.
+                add(next, instr.instr_type == Some(InstrType::Extend));
+            }
+            Terminator::Jump(target) => add(*target, false),
+            Terminator::CondBranch { taken, fallthru } => {
+                add(*taken, false);
+                add(*fallthru, false);
+            }
+            Terminator::CcsBranch(targets) => {
+                for target in targets {
+                    add(*target, false);
+                }
+            }
+            Terminator::Indirect { possible_targets } => {
+                for target in possible_targets {
+                    add(*target, false);
+                }
+            }
+            Terminator::Halt => {}
+        }
+        functions.push(key);
+    }
+
+    DirectFunctionPlan {
+        functions,
+        indirect_targets,
+    }
+}
 
 /// Decode an AGC memory image into an [`InstrStream`].
 ///
