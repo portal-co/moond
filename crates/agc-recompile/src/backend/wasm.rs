@@ -501,7 +501,7 @@ where
             class: classify_agc_insn(instr.instr_type),
         };
         let (reactor, traps, layout) = (&mut self.reactor, &mut self.traps, &self.layout);
-        let action = traps.on_instruction(&speet_info, ctx, reactor, layout)?;
+        let action = traps.on_instruction(&speet_info, ctx, reactor, layout, CellIdx(0))?;
 
         if action == TrapAction::Skip {
             emit_direct_terminator(
@@ -525,7 +525,8 @@ where
         Ok(())
     }
 
-    fn finish(self, ctx: &mut Context) -> Result<Vec<u8>, Err> {
+    fn finish(mut self, ctx: &mut Context) -> Result<Vec<u8>, Err> {
+        self.reactor.seal_remaining(ctx)?;
         let n_funcs          = self.reactor.fn_count() as u32;
         let base_func_offset = self.reactor.base_func_offset();
         let entry_function_indices: Vec<_> = self
@@ -536,11 +537,7 @@ where
             .into_iter()
             .map(|entry| (entry, self.function_index(entry, false)))
             .collect();
-        let mut functions    = self.reactor.into_fns();
-
-        for f in &mut functions {
-            f.instruction(&Instruction::End);
-        }
+        let functions        = self.reactor.into_fns();
 
         let mut module = Module::new();
 
@@ -702,7 +699,7 @@ fn fire_jmp<'cb, 'ctx, Context, Err>(
     function_indices: &BTreeMap<DirectFunctionKey, u32>,
 ) -> Result<(), Err> {
     let jinfo = JumpInfo::direct(source_pc as u64, target_addr as u64, kind);
-    let action = traps.on_jump(&jinfo, ctx, reactor, layout)?;
+    let action = traps.on_jump(&jinfo, ctx, reactor, layout, CellIdx(0))?;
     if action == TrapAction::Continue {
         // Flush registers to linear memory before the return_call so the next
         // function's load-at-entry sees the current register state.
@@ -757,7 +754,7 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
             {
                 let jinfo = JumpInfo::direct(instr.addr as u64, *taken as u64,
                     JumpKind::ConditionalBranch);
-                let action = traps.on_jump(&jinfo, ctx, reactor, layout)?;
+                let action = traps.on_jump(&jinfo, ctx, reactor, layout, CellIdx(0))?;
                 if action == TrapAction::Continue {
                     flush_regs_direct(reactor, tail_idx, ctx, emit_ctx)?;
                     feed(reactor, tail_idx, ctx,
@@ -780,7 +777,7 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
                 {
                     let jinfo = JumpInfo::direct(instr.addr as u64, t as u64,
                         JumpKind::ConditionalBranch);
-                    let action = traps.on_jump(&jinfo, ctx, reactor, layout)?;
+                    let action = traps.on_jump(&jinfo, ctx, reactor, layout, CellIdx(0))?;
                     if action == TrapAction::Continue {
                         flush_regs_direct(reactor, tail_idx, ctx, emit_ctx)?;
                         feed(reactor, tail_idx, ctx,
@@ -803,7 +800,7 @@ fn emit_direct_terminator<'cb, 'ctx, Context, Err>(
                 {
                     let jinfo = JumpInfo::indirect(instr.addr as u64, emit_ctx.li.scr0,
                         JumpKind::IndirectJump);
-                    let action = traps.on_jump(&jinfo, ctx, reactor, layout)?;
+                    let action = traps.on_jump(&jinfo, ctx, reactor, layout, CellIdx(0))?;
                     if action == TrapAction::Continue {
                         flush_regs_direct(reactor, tail_idx, ctx, emit_ctx)?;
                         feed(reactor, tail_idx, ctx,
