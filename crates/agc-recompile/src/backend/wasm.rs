@@ -77,6 +77,57 @@ const MEM_EXTEND:     u64 = 16;
 const MEM_INHINT:     u64 = 18;
 const MEM_INSTR_WORD: u64 = 20;
 
+/// Append a source-neutral, unsigned v0.1 WSMM custom section to emitted WASM.
+///
+/// A caller that wants authenticated metadata signs the finished module with
+/// `wasmsign3`; ordinary consumers may select `RespectUnstable` immediately.
+pub fn append_wsmm_manifest(wasm: &mut Vec<u8>, manifest: &wax_meta::Manifest) -> Result<(), wax_meta::Error> {
+    let payload = manifest.encode()?;
+    let mut section = Vec::with_capacity(wax_meta::SECTION_NAME.len() + payload.len() + 10);
+    put_uleb(&mut section, wax_meta::SECTION_NAME.len() as u64);
+    section.extend_from_slice(wax_meta::SECTION_NAME.as_bytes());
+    section.extend_from_slice(&payload);
+    wasm.push(0);
+    put_uleb(wasm, section.len() as u64);
+    wasm.extend_from_slice(&section);
+    Ok(())
+}
+
+/// The fixed AGC direct-backend portion of the v0.1 manifest.
+///
+/// Dynamic address access remains `unknown`; this manifest therefore exposes
+/// the register backing range without over-claiming that the rest of memory is
+/// unused.
+pub fn direct_wsmm_manifest() -> wax_meta::Manifest {
+    use wax_meta::Value;
+    let mut manifest = wax_meta::Manifest::new();
+    manifest.insert("format.version".into(), Value::U64(1)).expect("literal key");
+    manifest.insert("memory.count".into(), Value::U64(1)).expect("literal key");
+    manifest.insert("memory/0/index".into(), Value::U64(0)).expect("literal key");
+    manifest.insert("memory/0/initial_pages".into(), Value::U64(1)).expect("literal key");
+    manifest.insert("memory/0/address_bits".into(), Value::U64(32)).expect("literal key");
+    manifest.insert("memory/0/dynamic_access".into(), Value::String("unknown".into())).expect("literal key");
+    manifest.insert("memory/0/used".into(), Value::List(vec![Value::Map({
+        let mut range = BTreeMap::new();
+        range.insert("class".into(), Value::String("registers".into()));
+        range.insert("length".into(), Value::U64(MEM_INSTR_WORD + 2));
+        range.insert("permissions".into(), Value::String("rw".into()));
+        range.insert("start".into(), Value::U64(0));
+        range
+    })])).expect("literal key");
+    manifest
+}
+
+fn put_uleb(into: &mut Vec<u8>, mut value: u64) {
+    loop {
+        let mut byte = (value & 0x7f) as u8;
+        value >>= 7;
+        if value != 0 { byte |= 0x80; }
+        into.push(byte);
+        if value == 0 { return; }
+    }
+}
+
 // ─── Standard imported function indices ──────────────────────────────────────
 
 const FN_MEM_READ:     u32 = 0;
