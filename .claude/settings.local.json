@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(cargo test:*)",
+      "Bash(grep:*)",
+      "Bash(for f in ads_e.md aug_e.md das_e.md dim_e.md dinc_c.md go.md incr_e.md mcdu_c.md minc_c.md msu_e.md ndx_e.md pcdu_c.md pinc_c.md rand_h.md resume.md ror_h.md rxor_h.md shanc_c.md shinc_c.md tcf_f.md wand_h.md wor_h.md write_h.md)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//Users/grahamkelly/Code/portal-hot/moond/**)",
+      "Bash(done)",
+      "Bash(cargo check:*)",
+      "Bash(cargo doc -p wasmparser --no-deps)",
+      "Read(//Users/grahamkelly/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmparser-0.240.0/src/**)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
